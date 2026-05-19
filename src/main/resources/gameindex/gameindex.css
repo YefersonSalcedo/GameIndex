@@ -1,0 +1,406 @@
+/* ============================================================
+   GameIndex — Hoja de estilos JavaFX
+   Fondo azul/morado oscuro, acento violeta, tipografía gaming
+   ============================================================ */
+
+/* ── Raíz / ventana ── */
+.root {
+    -fx-background-color: #0d0b1e;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 13px;
+}
+
+/* ── Barra superior ── */
+.top-bar {
+    -fx-background-color: #100d28;
+    -fx-border-color: #2a1f5a;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 10 20 10 20;
+}
+
+.logo-text {
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #a78bfa;
+    -fx-letter-spacing: 2px;
+}
+
+.subtitle-text {
+    -fx-font-size: 10px;
+    -fx-text-fill: #6b5fa8;
+}
+
+.status-text {
+    -fx-font-size: 11px;
+    -fx-text-fill: #7c9ccc;
+}
+
+/* ── Barra lateral ── */
+.sidebar {
+    -fx-background-color: #0f0c22;
+    -fx-border-color: #1e1545;
+    -fx-border-width: 0 1 0 0;
+    -fx-min-width: 180px;
+    -fx-max-width: 180px;
+}
+
+.nav-section-label {
+    -fx-font-size: 9px;
+    -fx-text-fill: #4a3d80;
+    -fx-padding: 12 12 4 12;
+    -fx-font-weight: bold;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #7c6eb0;
+    -fx-font-size: 12px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 9 16 9 16;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 0 2;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+    -fx-min-width: 180px;
+    -fx-max-width: 180px;
+    -fx-graphic-text-gap: 10;
+}
+
+.nav-button:hover {
+    -fx-background-color: #1a1440;
+    -fx-text-fill: #c4b5fd;
+}
+
+.nav-button-active {
+    -fx-background-color: #1e1650;
+    -fx-text-fill: #a78bfa;
+    -fx-border-color: #7c3aed;
+    -fx-border-width: 0 0 0 2;
+}
+
+/* ── Área de contenido ── */
+.content-area {
+    -fx-background-color: #0d0b1e;
+    -fx-padding: 24;
+}
+
+/* ── Encabezado de panel ── */
+.panel-title {
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #c4b5fd;
+}
+
+.panel-badge {
+    -fx-background-color: #2a1f5a;
+    -fx-text-fill: #7c6eb0;
+    -fx-font-size: 10px;
+    -fx-padding: 3 10 3 10;
+    -fx-background-radius: 20px;
+}
+
+/* ── Tarjeta (card) ── */
+.card {
+    -fx-background-color: #13102a;
+    -fx-border-color: #221a4a;
+    -fx-border-width: 1;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-padding: 18;
+}
+
+.card-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #4a3d80;
+    -fx-font-weight: bold;
+}
+
+/* ── Campos de formulario ── */
+.field-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: #6b5fa8;
+    -fx-font-weight: bold;
+}
+
+.gi-input {
+    -fx-background-color: #0d0b1e;
+    -fx-border-color: #2a1f5a;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-text-fill: #c4b5fd;
+    -fx-prompt-text-fill: #3a2e6a;
+    -fx-font-size: 12px;
+    -fx-padding: 7 12 7 12;
+}
+
+.gi-input:focused {
+    -fx-border-color: #7c3aed;
+    -fx-effect: dropshadow(gaussian, #7c3aed44, 6, 0, 0, 0);
+}
+
+.gi-textarea {
+    -fx-background-color: #0d0b1e;
+    -fx-border-color: #2a1f5a;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-text-fill: #c4b5fd;
+    -fx-prompt-text-fill: #3a2e6a;
+    -fx-font-size: 12px;
+    -fx-padding: 7 12 7 12;
+    -fx-control-inner-background: #0d0b1e;
+}
+
+.gi-textarea:focused {
+    -fx-border-color: #7c3aed;
+}
+
+/* ── Botones ── */
+.btn-primary {
+    -fx-background-color: #5b21b6;
+    -fx-text-fill: #e9d5ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 20 8 20;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 6;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #6d28d9;
+}
+
+.btn-primary:pressed {
+    -fx-background-color: #4c1d95;
+}
+
+.btn-secondary {
+    -fx-background-color: #1e1650;
+    -fx-text-fill: #a78bfa;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 20 8 20;
+    -fx-background-radius: 6px;
+    -fx-border-color: #2a1f5a;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 6;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #2a1f5a;
+}
+
+.btn-danger {
+    -fx-background-color: #4c1019;
+    -fx-text-fill: #fca5a5;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 20 8 20;
+    -fx-background-radius: 6px;
+    -fx-border-color: #7f1d1d;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-cursor: hand;
+}
+
+.btn-danger:hover {
+    -fx-background-color: #6b1c1c;
+}
+
+.btn-icon {
+    -fx-background-color: transparent;
+    -fx-text-fill: #4a3d80;
+    -fx-font-size: 12px;
+    -fx-padding: 4 6 4 6;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.btn-icon:hover {
+    -fx-background-color: #1e1650;
+    -fx-text-fill: #a78bfa;
+}
+
+/* ── Tabla ── */
+.gi-table {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-table-cell-border-color: #18113a;
+    -fx-padding: 0;
+}
+
+.gi-table .column-header-background {
+    -fx-background-color: transparent;
+}
+
+.gi-table .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: #2a1f5a;
+    -fx-border-width: 0 0 1 0;
+    -fx-size: 30px;
+}
+
+.gi-table .column-header .label {
+    -fx-text-fill: #4a3d80;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 0 0 10;
+}
+
+.gi-table .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: #18113a;
+    -fx-border-width: 0 0 1 0;
+    -fx-table-cell-border-color: transparent;
+}
+
+.gi-table .table-row-cell:hover {
+    -fx-background-color: #16103a;
+}
+
+.gi-table .table-row-cell:selected {
+    -fx-background-color: #1e1650;
+}
+
+.gi-table .table-cell {
+    -fx-text-fill: #9d8fd4;
+    -fx-font-size: 12px;
+    -fx-padding: 10 10 10 10;
+    -fx-border-color: transparent;
+    -fx-background-color: transparent;
+}
+
+.gi-table .table-row-cell:selected .table-cell {
+    -fx-text-fill: #c4b5fd;
+}
+
+.gi-table .scroll-bar {
+    -fx-background-color: #0f0c22;
+}
+
+.gi-table .scroll-bar .thumb {
+    -fx-background-color: #2a1f5a;
+    -fx-background-radius: 4px;
+}
+
+/* ── Tarjetas de estadísticas ── */
+.stat-card {
+    -fx-background-color: #0f0c22;
+    -fx-border-color: #1e1545;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 12 14 12 14;
+}
+
+.stat-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #4a3d80;
+    -fx-font-weight: bold;
+}
+
+.stat-value {
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #a78bfa;
+}
+
+.stat-value-green {
+    -fx-text-fill: #34d399;
+}
+
+.stat-value-red {
+    -fx-text-fill: #f87171;
+}
+
+/* ── Caja de confirmación ── */
+.confirm-box {
+    -fx-background-color: #1a0e2e;
+    -fx-border-color: #4c1d95;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 20;
+    -fx-alignment: center;
+}
+
+.confirm-title {
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #e9d5ff;
+    -fx-font-weight: bold;
+}
+
+.confirm-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6b5fa8;
+    -fx-text-alignment: center;
+    -fx-wrap-text: true;
+}
+
+/* ── Barra de estado inferior ── */
+.status-bar {
+    -fx-background-color: #100d28;
+    -fx-border-color: #1e1545;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 6 20 6 20;
+}
+
+.status-bar-text {
+    -fx-font-size: 10px;
+    -fx-text-fill: #4a3d80;
+}
+
+/* ── Badge / etiqueta de género ── */
+.genre-badge {
+    -fx-background-color: #1e1650;
+    -fx-text-fill: #818cf8;
+    -fx-font-size: 10px;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 12px;
+}
+
+/* ── Separador ── */
+.gi-separator {
+    -fx-background-color: #1e1545;
+}
+
+/* ── ScrollPane transparente ── */
+.transparent-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+}
+
+.transparent-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.transparent-scroll .scroll-bar:vertical {
+    -fx-background-color: #0f0c22;
+    -fx-pref-width: 8px;
+}
+
+.transparent-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: #2a1f5a;
+    -fx-background-radius: 4px;
+}
+
+.transparent-scroll .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+}
+
+.transparent-scroll .scroll-bar:vertical .increment-button,
+.transparent-scroll .scroll-bar:vertical .decrement-button {
+    -fx-background-color: transparent;
+    -fx-pref-height: 0;
+}
