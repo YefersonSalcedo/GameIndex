@@ -1,4 +1,4 @@
 package gameindex.model;
 
-public class videojuego {
+public class Videojuego {
 }
