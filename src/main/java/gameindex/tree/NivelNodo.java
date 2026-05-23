@@ -1,4 +1,6 @@
 package gameindex.tree;
 
-public class NivelNodo {
+public enum NivelNodo {
+    HOJA,
+    INTERNO
 }
