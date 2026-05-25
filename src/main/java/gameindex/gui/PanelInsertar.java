@@ -1,182 +1,253 @@
 package gameindex.gui;
 
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import gameindex.storage.ArchivoManager;
+import gameindex.tree.BPlusTree;
+import gameindex.model.Videojuego;
 
-/**
- * PanelInsertar — formulario para registrar un nuevo videojuego.
- * Valida los campos y envía los datos al Árbol B+ mediante ArchivoManager.
- */
-public class PanelInsertar extends VBox {
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
+import java.awt.event.*;
 
+public class PanelInsertar extends JPanel {
+
+    private final ArchivoManager archivoManager;
+    private final BPlusTree      bPlusTree;
     private final VentanaPrincipal ventana;
 
     // Campos del formulario
-    private TextField tfTitulo, tfDesarrollador, tfAnio, tfPlataformas, tfGenero;
-    private TextArea  taSinopsis;
+    private JTextField  txtTitulo;
+    private JTextField  txtDesarrollador;
+    private JTextField  txtAnio;
+    private JTextField  txtPlataformas;
+    private JTextField  txtGenero;
+    private JTextArea   txtSinopsis;
 
-    public PanelInsertar(VentanaPrincipal ventana) {
-        this.ventana = ventana;
-        setSpacing(18);
-        setFillWidth(true);
-        getStyleClass().add("content-area");
-
-        getChildren().addAll(
-            buildHeader(),
-            buildForm()
-        );
+    public PanelInsertar(ArchivoManager am, BPlusTree bt, VentanaPrincipal vp) {
+        this.archivoManager = am;
+        this.bPlusTree      = bt;
+        this.ventana        = vp;
+        construirUI();
     }
 
-    // ── Encabezado del panel ─────────────────────────────────────
-    private HBox buildHeader() {
-        Label icon  = new Label("＋");
-        icon.setStyle("-fx-font-size:18px; -fx-text-fill:#7c3aed;");
+    private void construirUI() {
+        setLayout(new BorderLayout());
+        setBackground(Tema.BG_SURFACE);
+        setBorder(new EmptyBorder(32, 40, 32, 40));
 
-        Label title = new Label("Nuevo registro");
-        title.getStyleClass().add("panel-title");
-
-        Label badge = new Label("PanelInsertar");
-        badge.getStyleClass().add("panel-badge");
-
-        HBox header = new HBox(12, icon, title, badge);
-        header.setAlignment(Pos.CENTER_LEFT);
-        return header;
+        add(crearEncabezado(), BorderLayout.NORTH);
+        add(crearFormulario(), BorderLayout.CENTER);
     }
 
-    // ── Formulario en grid 2 columnas ────────────────────────────
-    private VBox buildForm() {
-        // Columna 1 / Columna 2
-        ColumnConstraints col1 = new ColumnConstraints();
-        col1.setPercentWidth(50);
-        ColumnConstraints col2 = new ColumnConstraints();
-        col2.setPercentWidth(50);
+    private JPanel crearEncabezado() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Tema.BG_SURFACE);
+        p.setBorder(new EmptyBorder(0, 0, 24, 0));
 
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(12);
-        grid.getColumnConstraints().addAll(col1, col2);
+        JLabel titulo = new JLabel("Insertar Videojuego");
+        titulo.setFont(Tema.FONT_TITLE);
+        titulo.setForeground(Tema.TEXT_PRIMARY);
 
-        // ── Título (ocupa todo el ancho) ──
-        tfTitulo = field("Ej: Elden Ring");
-        grid.add(fieldBox("Título", tfTitulo), 0, 0, 2, 1);
+        JLabel sub = new JLabel("Completa todos los campos para registrar un nuevo título");
+        sub.setFont(Tema.FONT_BODY);
+        sub.setForeground(Tema.TEXT_MUTED);
 
-        // ── Fila 2 ──
-        tfDesarrollador = field("Ej: FromSoftware");
-        tfAnio          = field("Ej: 2022");
-        grid.add(fieldBox("Desarrollador", tfDesarrollador), 0, 1);
-        grid.add(fieldBox("Año", tfAnio), 1, 1);
+        JPanel texts = new JPanel();
+        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
+        texts.setBackground(Tema.BG_SURFACE);
+        texts.add(titulo);
+        texts.add(Box.createVerticalStrut(4));
+        texts.add(sub);
 
-        // ── Fila 3 ──
-        tfPlataformas = field("Ej: PC, PS5, Xbox Series");
-        tfGenero      = field("Ej: Action RPG");
-        grid.add(fieldBox("Plataformas", tfPlataformas), 0, 2);
-        grid.add(fieldBox("Género", tfGenero), 1, 2);
-
-        // ── Sinopsis (todo el ancho) ──
-        taSinopsis = new TextArea();
-        taSinopsis.setPromptText("Descripción del videojuego...");
-        taSinopsis.setPrefRowCount(3);
-        taSinopsis.getStyleClass().add("gi-textarea");
-        taSinopsis.setWrapText(true);
-        grid.add(fieldBox("Sinopsis", taSinopsis), 0, 3, 2, 1);
-
-        // ── Botones ──
-        Button btnLimpiar  = new Button("✕  Limpiar");
-        btnLimpiar.getStyleClass().add("btn-secondary");
-        btnLimpiar.setOnAction(e -> limpiar());
-
-        Button btnInsertar = new Button("⬡  Insertar en B+");
-        btnInsertar.getStyleClass().add("btn-primary");
-        btnInsertar.setOnAction(e -> insertar());
-
-        HBox botones = new HBox(10, btnLimpiar, btnInsertar);
-        botones.setAlignment(Pos.CENTER_RIGHT);
-
-        VBox card = new VBox(14, labelCardTitle("Datos del videojuego"), grid, botones);
-        card.getStyleClass().add("card");
-        VBox.setVgrow(card, Priority.ALWAYS);
-        return card;
+        p.add(texts, BorderLayout.WEST);
+        return p;
     }
 
-    // ── Lógica de inserción ──────────────────────────────────────
-    private void insertar() {
-        // Validación básica de campos vacíos
-        if (tfTitulo.getText().isBlank()) {
-            showError("El campo Título no puede estar vacío.");
-            tfTitulo.requestFocus();
+    private JScrollPane crearFormulario() {
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setBackground(Tema.BG_CARD);
+        form.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Tema.BORDER, 1),
+                new EmptyBorder(28, 32, 28, 32)
+        ));
+
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets  = new Insets(8, 0, 8, 16);
+        gc.anchor  = GridBagConstraints.WEST;
+        gc.fill    = GridBagConstraints.HORIZONTAL;
+
+        // Fila 0: Título
+        txtTitulo = crearCampo(100);
+        agregarFila(form, gc, 0, "Título", txtTitulo, "Máx. 100 caracteres");
+
+        // Fila 1: Desarrollador
+        txtDesarrollador = crearCampo(80);
+        agregarFila(form, gc, 1, "Desarrollador", txtDesarrollador, "Máx. 80 caracteres");
+
+        // Fila 2: Año | Género (dos columnas)
+        txtAnio   = crearCampo(6);
+        txtGenero = crearCampo(50);
+        agregarFilaDoble(form, gc, 2,
+                "Año",   txtAnio,   "Ej: 2024",
+                "Género", txtGenero, "Máx. 50 caracteres");
+
+        // Fila 3: Plataformas
+        txtPlataformas = crearCampo(120);
+        agregarFila(form, gc, 3, "Plataformas", txtPlataformas, "Ej: PC, PS5, Xbox  —  Máx. 120 caracteres");
+
+        // Fila 4: Sinopsis
+        txtSinopsis = new JTextArea(4, 30);
+        Tema.estilizarTextArea(txtSinopsis);
+        JScrollPane sinScroll = new JScrollPane(txtSinopsis);
+        sinScroll.setBorder(BorderFactory.createLineBorder(Tema.BORDER));
+        agregarFilaTextArea(form, gc, 4, "Sinopsis", sinScroll, "Máx. 300 caracteres");
+
+        // Fila 5: Botones
+        agregarBotones(form, gc, 5);
+
+        JScrollPane scroll = new JScrollPane(form);
+        scroll.setBorder(null);
+        scroll.setBackground(Tema.BG_SURFACE);
+        scroll.getViewport().setBackground(Tema.BG_SURFACE);
+        return scroll;
+    }
+
+    private void agregarFila(JPanel p, GridBagConstraints gc,
+                             int fila, String label, JComponent campo, String hint) {
+        gc.gridx = 0; gc.gridy = fila * 3;
+        gc.gridwidth = 4; gc.weightx = 0;
+        p.add(crearLabel(label), gc);
+
+        gc.gridy = fila * 3 + 1; gc.weightx = 1;
+        p.add(campo, gc);
+
+        gc.gridy = fila * 3 + 2; gc.weightx = 0;
+        p.add(crearHint(hint), gc);
+    }
+
+    private void agregarFilaDoble(JPanel p, GridBagConstraints gc, int fila,
+                                  String l1, JComponent c1, String h1,
+                                  String l2, JComponent c2, String h2) {
+        GridBagConstraints g = (GridBagConstraints) gc.clone();
+
+        g.gridwidth = 2; g.weightx = 0.3;
+        g.gridx = 0; g.gridy = fila * 3;     p.add(crearLabel(l1), g);
+        g.gridy = fila * 3 + 1; g.weightx = 0.3; p.add(c1, g);
+        g.gridy = fila * 3 + 2; p.add(crearHint(h1), g);
+
+        g.gridx = 2; g.gridy = fila * 3;     p.add(crearLabel(l2), g);
+        g.gridy = fila * 3 + 1; g.weightx = 0.7; p.add(c2, g);
+        g.gridy = fila * 3 + 2; p.add(crearHint(h2), g);
+    }
+
+    private void agregarFilaTextArea(JPanel p, GridBagConstraints gc,
+                                     int fila, String label, JComponent campo, String hint) {
+        gc.gridx = 0; gc.gridy = fila * 3;
+        gc.gridwidth = 4; gc.weightx = 0;
+        p.add(crearLabel(label), gc);
+
+        gc.gridy = fila * 3 + 1; gc.weightx = 1; gc.fill = GridBagConstraints.BOTH; gc.weighty = 1;
+        p.add(campo, gc);
+        gc.fill = GridBagConstraints.HORIZONTAL; gc.weighty = 0;
+
+        gc.gridy = fila * 3 + 2; gc.weightx = 0;
+        p.add(crearHint(hint), gc);
+    }
+
+    private void agregarBotones(JPanel p, GridBagConstraints gc, int fila) {
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        btns.setBackground(Tema.BG_CARD);
+
+        JButton btnLimpiar = crearBoton("Limpiar", false);
+        JButton btnGuardar = crearBoton("Guardar registro", true);
+
+        btnLimpiar.addActionListener(e -> limpiarFormulario());
+        btnGuardar.addActionListener(e -> guardar());
+
+        btns.add(btnLimpiar);
+        btns.add(btnGuardar);
+
+        gc.gridx = 0; gc.gridy = fila * 3 + 1;
+        gc.gridwidth = 4; gc.weightx = 1;
+        gc.insets = new Insets(20, 0, 0, 0);
+        p.add(btns, gc);
+    }
+
+    private JTextField crearCampo(int maxChars) {
+        JTextField f = new JTextField();
+        Tema.estilizarTextField(f);
+        return f;
+    }
+
+    private JLabel crearLabel(String text) {
+        return Tema.label(text);
+    }
+
+    private JLabel crearHint(String text) {
+        return Tema.hint(text);
+    }
+
+    private JButton crearBoton(String texto, boolean primario) {
+        return primario ? Tema.botonPrimario(texto) : Tema.botonSecundario(texto);
+    }
+
+    private void guardar() {
+        /**
+        // Validaciones
+        String titulo       = txtTitulo.getText().trim();
+        String desarrollador = txtDesarrollador.getText().trim();
+        String anioStr      = txtAnio.getText().trim();
+        String plataformas  = txtPlataformas.getText().trim();
+        String genero       = txtGenero.getText().trim();
+        String sinopsis     = txtSinopsis.getText().trim();
+
+        if (titulo.isEmpty() || desarrollador.isEmpty() || anioStr.isEmpty()
+                || plataformas.isEmpty() || genero.isEmpty() || sinopsis.isEmpty()) {
+            marcarError("Todos los campos son obligatorios.");
             return;
         }
-        if (tfDesarrollador.getText().isBlank()) {
-            showError("El campo Desarrollador no puede estar vacío.");
+
+        int anio;
+        try {
+            anio = Integer.parseInt(anioStr);
+            if (anio < 1970 || anio > 2100) throw new NumberFormatException();
+        } catch (NumberFormatException ex) {
+            marcarError("El año debe ser un número entre 1970 y 2100.");
             return;
         }
-        if (!tfAnio.getText().matches("\\d{4}")) {
-            showError("El año debe ser un número de 4 dígitos.");
-            tfAnio.requestFocus();
-            return;
+
+        if (titulo.length()       > 100) { marcarError("El título excede 100 caracteres.");        return; }
+        if (desarrollador.length() > 80) { marcarError("El desarrollador excede 80 caracteres.");  return; }
+        if (plataformas.length()  > 120) { marcarError("Las plataformas exceden 120 caracteres.");  return; }
+        if (genero.length()       >  50) { marcarError("El género excede 50 caracteres.");          return; }
+        if (sinopsis.length()     > 300) { marcarError("La sinopsis excede 300 caracteres.");       return; }
+
+        try {
+            Videojuego v = new Videojuego(titulo, desarrollador, anio, plataformas, genero, sinopsis);
+            long offset  = archivoManager.agregarRegistro(v);
+            bPlusTree.insertar(v);
+
+            ventana.setStatusOk("Videojuego '" + titulo + "' insertado correctamente.");
+            ventana.actualizarConteoRegistros();
+            limpiarFormulario();
+        } catch (Exception ex) {
+            marcarError("Error al guardar: " + ex.getMessage());
         }
-
-        // ── Construir y persistir el videojuego ──────────────────
-        // Videojuego v = new Videojuego(
-        //     tfTitulo.getText().trim(),
-        //     tfDesarrollador.getText().trim(),
-        //     Integer.parseInt(tfAnio.getText().trim()),
-        //     tfPlataformas.getText().trim(),
-        //     tfGenero.getText().trim(),
-        //     taSinopsis.getText().trim()
-        // );
-        // long offset = ventana.getArchivoManager().agregarRegistro(v);
-        // ventana.getBPlusTree().insertar(v.getTitulo(), offset);
-
-        ventana.setLastOperation("insertar(\"" + tfTitulo.getText().trim() + "\")");
-        showSuccess("Videojuego \"" + tfTitulo.getText().trim() + "\" insertado correctamente.");
-        limpiar();
+         */
     }
 
-    private void limpiar() {
-        tfTitulo.clear(); tfDesarrollador.clear(); tfAnio.clear();
-        tfPlataformas.clear(); tfGenero.clear(); taSinopsis.clear();
+    private void limpiarFormulario() {
+        txtTitulo.setText("");
+        txtDesarrollador.setText("");
+        txtAnio.setText("");
+        txtPlataformas.setText("");
+        txtGenero.setText("");
+        txtSinopsis.setText("");
+        txtTitulo.requestFocus();
     }
 
-    // ── Helpers ──────────────────────────────────────────────────
-    private TextField field(String prompt) {
-        TextField tf = new TextField();
-        tf.setPromptText(prompt);
-        tf.getStyleClass().add("gi-input");
-        tf.setMaxWidth(Double.MAX_VALUE);
-        return tf;
-    }
-
-    private VBox fieldBox(String labelText, Control control) {
-        Label lbl = new Label(labelText);
-        lbl.getStyleClass().add("field-label");
-        VBox box = new VBox(5, lbl, control);
-        VBox.setVgrow(control, Priority.ALWAYS);
-        HBox.setHgrow(box, Priority.ALWAYS);
-        GridPane.setHgrow(box, Priority.ALWAYS);
-        return box;
-    }
-
-    private Label labelCardTitle(String text) {
-        Label lbl = new Label(text.toUpperCase());
-        lbl.getStyleClass().add("card-label");
-        return lbl;
-    }
-
-    private void showError(String msg) {
-        Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
-        a.setHeaderText("Error de validación");
-        a.setTitle("GameIndex");
-        a.getDialogPane().setStyle("-fx-background-color:#13102a; -fx-text-fill:#c4b5fd;");
-        a.showAndWait();
-    }
-
-    private void showSuccess(String msg) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION, msg, ButtonType.OK);
-        a.setHeaderText("Operación exitosa");
-        a.setTitle("GameIndex");
-        a.showAndWait();
+    private void marcarError(String msg) {
+        ventana.setStatusError(msg);
+        JOptionPane.showMessageDialog(ventana, msg, "Error de validación", JOptionPane.WARNING_MESSAGE);
     }
 }

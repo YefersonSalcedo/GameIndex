@@ -1,200 +1,187 @@
 package gameindex.gui;
 
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import gameindex.storage.ArchivoManager;
+import gameindex.tree.BPlusTree;
+import gameindex.model.Videojuego;
 
-/**
- * PanelBuscar — búsqueda exacta de un videojuego por título.
- * Muestra todos los atributos del registro encontrado, incluido
- * el offset en disco para verificar el funcionamiento del B+.
- */
-public class PanelBuscar extends VBox {
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
+import java.awt.event.*;
 
+public class PanelBuscar extends JPanel {
+
+    private final ArchivoManager   archivoManager;
+    private final BPlusTree        bPlusTree;
     private final VentanaPrincipal ventana;
 
-    private TextField tfBusqueda;
+    private JTextField txtBusqueda;
+    private JPanel     panelResultado;
 
-    // Etiquetas de resultado
-    private Label valTitulo, valDesarrollador, valAnio, valPlataformas,
-                  valGenero, valOffset, valSinopsis;
-
-    private VBox resultCard;
-
-    public PanelBuscar(VentanaPrincipal ventana) {
-        this.ventana = ventana;
-        setSpacing(18);
-        setFillWidth(true);
-        VBox.setVgrow(this, Priority.ALWAYS);
-
-        getChildren().addAll(
-            buildHeader(),
-            buildSearchCard(),
-            buildResultCard()
-        );
+    public PanelBuscar(ArchivoManager am, BPlusTree bt, VentanaPrincipal vp) {
+        this.archivoManager = am;
+        this.bPlusTree      = bt;
+        this.ventana        = vp;
+        construirUI();
     }
 
-    // ── Encabezado ───────────────────────────────────────────────
-    private HBox buildHeader() {
-        Label icon  = new Label("🔍");
-        icon.setStyle("-fx-font-size:18px;");
+    private void construirUI() {
+        setLayout(new BorderLayout());
+        setBackground(Tema.BG_SURFACE);
+        setBorder(new EmptyBorder(32, 40, 32, 40));
 
-        Label title = new Label("Búsqueda exacta");
-        title.getStyleClass().add("panel-title");
-
-        Label badge = new Label("PanelBuscar");
-        badge.getStyleClass().add("panel-badge");
-
-        HBox h = new HBox(12, icon, title, badge);
-        h.setAlignment(Pos.CENTER_LEFT);
-        return h;
+        add(crearEncabezado(), BorderLayout.NORTH);
+        add(crearCuerpo(),     BorderLayout.CENTER);
     }
 
-    // ── Barra de búsqueda ────────────────────────────────────────
-    private VBox buildSearchCard() {
-        tfBusqueda = new TextField();
-        tfBusqueda.setPromptText("Ingresa el título exacto del videojuego...");
-        tfBusqueda.getStyleClass().add("gi-input");
-        tfBusqueda.setMaxWidth(Double.MAX_VALUE);
-        // Permitir buscar con Enter
-        tfBusqueda.setOnAction(e -> buscar());
+    private JPanel crearEncabezado() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Tema.BG_SURFACE);
+        p.setBorder(new EmptyBorder(0, 0, 24, 0));
 
-        Button btnBuscar = new Button("→  Buscar");
-        btnBuscar.getStyleClass().add("btn-primary");
-        btnBuscar.setOnAction(e -> buscar());
+        JLabel titulo = Tema.label("Buscar Videojuego");
+        titulo.setFont(Tema.FONT_TITLE);
 
-        HBox searchRow = new HBox(8, tfBusqueda, btnBuscar);
-        HBox.setHgrow(tfBusqueda, Priority.ALWAYS);
-        searchRow.setAlignment(Pos.CENTER);
+        JLabel sub = Tema.hint("Búsqueda exacta por título en el Árbol B+");
 
-        VBox card = new VBox(12, cardTitle("Buscar por título"), searchRow);
-        card.getStyleClass().add("card");
-        return card;
+        JPanel texts = new JPanel();
+        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
+        texts.setBackground(Tema.BG_SURFACE);
+        texts.add(titulo);
+        texts.add(Box.createVerticalStrut(4));
+        texts.add(sub);
+
+        p.add(texts, BorderLayout.WEST);
+        return p;
     }
 
-    // ── Tarjeta de resultado ─────────────────────────────────────
-    private VBox buildResultCard() {
-        valTitulo       = resultVal("-");
-        valDesarrollador = resultVal("-");
-        valAnio          = resultVal("-");
-        valGenero        = resultVal("-");
-        valPlataformas   = resultVal("-");
-        valOffset        = resultVal("-");
-        valSinopsis      = resultVal("-");
+    private JPanel crearCuerpo() {
+        JPanel cuerpo = new JPanel();
+        cuerpo.setLayout(new BoxLayout(cuerpo, BoxLayout.Y_AXIS));
+        cuerpo.setBackground(Tema.BG_SURFACE);
 
-        // Estilos especiales
-        valTitulo.setStyle("-fx-font-size:13px; -fx-font-weight:bold; -fx-text-fill:#c4b5fd;");
-        valOffset.setStyle("-fx-font-size:11px; -fx-font-family:'Consolas','Courier New',monospace; -fx-text-fill:#4a3d80;");
+        JPanel barraPanel = new JPanel(new BorderLayout(12, 0));
+        barraPanel.setBackground(Tema.BG_CARD);
+        barraPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Tema.BORDER),
+                new EmptyBorder(16, 20, 16, 20)
+        ));
+        barraPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
 
-        GridPane grid = new GridPane();
-        grid.setHgap(20);
-        grid.setVgap(12);
+        txtBusqueda = new JTextField();
+        Tema.estilizarTextField(txtBusqueda);
+        txtBusqueda.addActionListener(e -> buscar()); // Enter para buscar
 
-        ColumnConstraints c1 = new ColumnConstraints();
-        c1.setPercentWidth(50);
-        ColumnConstraints c2 = new ColumnConstraints();
-        c2.setPercentWidth(50);
-        grid.getColumnConstraints().addAll(c1, c2);
+        JButton btnBuscar = Tema.botonPrimario("Buscar");
+        btnBuscar.setPreferredSize(new Dimension(130, 38));
+        btnBuscar.addActionListener(e -> buscar());
 
-        grid.add(fieldBox("Título",        valTitulo),        0, 0);
-        grid.add(fieldBox("Desarrollador", valDesarrollador), 1, 0);
-        grid.add(fieldBox("Año",           valAnio),          0, 1);
-        grid.add(fieldBox("Género",        valGenero),        1, 1);
-        grid.add(fieldBox("Plataformas",   valPlataformas),   0, 2);
-        grid.add(fieldBox("Offset en disco", valOffset),      1, 2);
-        grid.add(fieldBox("Sinopsis",      valSinopsis),      0, 3, 2, 1);
+        barraPanel.add(txtBusqueda, BorderLayout.CENTER);
+        barraPanel.add(btnBuscar,   BorderLayout.EAST);
 
-        valSinopsis.setStyle("-fx-font-size:12px; -fx-text-fill:#6b5fa8; -fx-wrap-text:true;");
-        valSinopsis.setWrapText(true);
-        valSinopsis.setMaxWidth(Double.MAX_VALUE);
+        panelResultado = new JPanel(new BorderLayout());
+        panelResultado.setBackground(Tema.BG_SURFACE);
+        panelResultado.setBorder(new EmptyBorder(20, 0, 0, 0));
+        mostrarVacio();
 
-        resultCard = new VBox(14, cardTitle("Resultado"), grid);
-        resultCard.getStyleClass().add("card");
-        VBox.setVgrow(resultCard, Priority.ALWAYS);
-        return resultCard;
+        cuerpo.add(barraPanel);
+        cuerpo.add(panelResultado);
+        return cuerpo;
     }
 
-    // ── Lógica de búsqueda ───────────────────────────────────────
     private void buscar() {
-        String titulo = tfBusqueda.getText().trim();
-        if (titulo.isBlank()) return;
+        /**
+         String titulo = txtBusqueda.getText().trim();
+         if (titulo.isEmpty()) {
+         mostrarMensaje("Escribe un título para buscar.", Tema.TEXT_MUTED);
+         return;
+         }
 
-        // ── Conectar con el backend ──────────────────────────────
-        // long offset = ventana.getBPlusTree().buscar(titulo);
-        // if (offset == -1) {
-        //     mostrarVacio(titulo);
-        //     return;
-        // }
-        // Videojuego v = ventana.getArchivoManager().leerRegistro(offset);
-        // mostrarResultado(v, offset);
+         try {
+         Long offset = bPlusTree.buscar(titulo);
+         if (offset == null) {
+         mostrarMensaje("No se encontró ningún videojuego con ese título.", Tema.DANGER);
+         ventana.setStatusError("Sin resultados para: " + titulo);
+         } else {
+         Videojuego v = archivoManager.leerRegistro(offset);
+         if (v == null || v.eliminado == 1) {
+         mostrarMensaje("El videojuego fue eliminado del sistema.", Tema.TEXT_MUTED);
+         } else {
+         mostrarResultado(v);
+         ventana.setStatusOk("Videojuego encontrado: " + titulo);
+         }
+         }
+         } catch (Exception ex) {
+         mostrarMensaje("Error al buscar: " + ex.getMessage(), Tema.DANGER);
+         }
+         */
+    }
 
-        // Datos de demostración (eliminar al integrar el backend):
-        if (titulo.equalsIgnoreCase("Elden Ring")) {
-            mostrarResultadoDemo(
-                "Elden Ring", "FromSoftware", "2022",
-                "Action RPG", "PC, PS5, Xbox Series",
-                "0x00003A80",
-                "Un RPG de acción en un vasto mundo abierto creado por FromSoftware."
-            );
-        } else {
-            mostrarVacio(titulo);
+    private void mostrarVacio() {
+        panelResultado.removeAll();
+        JLabel lbl = Tema.hint("Ingresa un título para comenzar la búsqueda");
+        lbl.setHorizontalAlignment(SwingConstants.CENTER);
+        panelResultado.add(lbl, BorderLayout.CENTER);
+        panelResultado.revalidate();
+        panelResultado.repaint();
+    }
+
+    private void mostrarMensaje(String msg, Color color) {
+        panelResultado.removeAll();
+        JLabel lbl = new JLabel(msg);
+        lbl.setFont(Tema.FONT_BODY);
+        lbl.setForeground(color);
+        lbl.setHorizontalAlignment(SwingConstants.CENTER);
+        panelResultado.add(lbl, BorderLayout.CENTER);
+        panelResultado.revalidate();
+        panelResultado.repaint();
+    }
+
+    private void mostrarResultado(Videojuego v) {
+        /**
+        panelResultado.removeAll();
+
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Tema.BG_CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Tema.ACCENT_DIM),
+                new EmptyBorder(24, 28, 24, 28)
+        ));
+
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.anchor = GridBagConstraints.WEST;
+        gc.insets = new Insets(5, 0, 5, 20);
+
+        String[][] campos = {
+                {"Título",        v.titulo},
+                {"Desarrollador", v.desarrollador},
+                {"Año",           String.valueOf(v.anio)},
+                {"Plataformas",   v.plataformas},
+                {"Género",        v.genero},
+                {"Sinopsis",      v.sinopsis},
+        };
+
+        for (int i = 0; i < campos.length; i++) {
+            gc.gridx = 0; gc.gridy = i; gc.weightx = 0;
+            JLabel lKey = Tema.hint(campos[i][0]);
+            lKey.setFont(Tema.FONT_LABEL);
+            lKey.setPreferredSize(new Dimension(130, 24));
+            card.add(lKey, gc);
+
+            gc.gridx = 1; gc.weightx = 1;
+            JLabel lVal = new JLabel("<html>" + campos[i][1] + "</html>");
+            lVal.setFont(Tema.FONT_BODY);
+            lVal.setForeground(Tema.TEXT_PRIMARY);
+            card.add(lVal, gc);
         }
 
-        ventana.setLastOperation("buscar(\"" + titulo + "\")");
-    }
+        // Spacer
+        gc.gridx = 0; gc.gridy = campos.length; gc.weighty = 1;
+        card.add(Box.createVerticalGlue(), gc);
 
-    private void mostrarResultadoDemo(String titulo, String dev, String anio,
-                                      String genero, String plataformas,
-                                      String offset, String sinopsis) {
-        valTitulo.setText(titulo);
-        valDesarrollador.setText(dev);
-        valAnio.setText(anio);
-        valGenero.setText(genero);
-        valPlataformas.setText(plataformas);
-        valOffset.setText(offset);
-        valSinopsis.setText(sinopsis);
-    }
-
-    /** Usar al integrar el backend real:
-     *  mostrarResultado(Videojuego v, long offset) */
-    // private void mostrarResultado(Videojuego v, long offset) {
-    //     valTitulo.setText(v.getTitulo());
-    //     valDesarrollador.setText(v.getDesarrollador());
-    //     valAnio.setText(String.valueOf(v.getAnio()));
-    //     valGenero.setText(v.getGenero());
-    //     valPlataformas.setText(v.getPlataformas());
-    //     valOffset.setText(String.format("0x%08X", offset));
-    //     valSinopsis.setText(v.getSinopsis());
-    // }
-
-    private void mostrarVacio(String titulo) {
-        valTitulo.setText("No encontrado: \"" + titulo + "\"");
-        valTitulo.setStyle("-fx-font-size:13px; -fx-text-fill:#f87171;");
-        valDesarrollador.setText("-");
-        valAnio.setText("-");
-        valGenero.setText("-");
-        valPlataformas.setText("-");
-        valOffset.setText("-");
-        valSinopsis.setText("-");
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────
-    private Label resultVal(String text) {
-        Label l = new Label(text);
-        l.setStyle("-fx-font-size:13px; -fx-text-fill:#9d8fd4;");
-        return l;
-    }
-
-    private VBox fieldBox(String labelText, Label value) {
-        Label lbl = new Label(labelText);
-        lbl.getStyleClass().add("field-label");
-        return new VBox(4, lbl, value);
-    }
-
-    private Label cardTitle(String text) {
-        Label l = new Label(text.toUpperCase());
-        l.getStyleClass().add("card-label");
-        return l;
+        panelResultado.add(card, BorderLayout.NORTH);
+        panelResultado.revalidate();
+        panelResultado.repaint();
+         */
     }
 }

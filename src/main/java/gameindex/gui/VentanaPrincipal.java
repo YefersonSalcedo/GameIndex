@@ -1,235 +1,365 @@
 package gameindex.gui;
 
-import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Node;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.stage.Stage;
+import com.formdev.flatlaf.FlatDarkLaf;
+import gameindex.storage.ArchivoManager;
+import gameindex.tree.BPlusTree;
 
-/**
- * VentanaPrincipal — punto central de GameIndex.
- * Coordina la navegación entre paneles y comparte las instancias
- * de ArchivoManager y BPlusTree (pasar por constructor o setters).
- */
-public class VentanaPrincipal extends Application {
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.event.*;
 
-    // ── Estado global del sistema ──────────────────────────────────
-    // Reemplaza estos campos con tus instancias reales:
-    // private ArchivoManager archivoManager;
-    // private BPlusTree bPlusTree;
+public class VentanaPrincipal extends JFrame {
 
-    private Label statusLabel;   // barra inferior — última operación
+    private ArchivoManager archivoManager;
+    private BPlusTree      bPlusTree;
 
-    // Botones de navegación para poder cambiar su estilo
-    private Button btnInsertar, btnBuscar, btnRango,
-                   btnActualizar, btnEliminar, btnListar;
-    private Button activeButton;
+    private JPanel     sidebarPanel;
+    private JPanel     contentPanel;
+    private CardLayout cardLayout;
+    private JLabel     statusLabel;
+    private JLabel     recordCountLabel;
+    private NavButton[] navButtons;
 
-    // Contenedor central donde se intercambian los paneles
-    private StackPane contentPane;
+    private static final String[] PANEL_NAMES  = {
+            "INSERTAR","BUSCAR","RANGO","ACTUALIZAR","ELIMINAR","LISTAR","ARBOL"
+    };
+    private static final String[] PANEL_LABELS = {
+            "Insertar","Buscar","Buscar Rango","Actualizar","Eliminar","Listar Todo","Ver Arbol B+"
+    };
 
-    @Override
-    public void start(Stage stage) {
-        // ── Inicializar backend aquí ────────────────────────────────
-        // archivoManager = new ArchivoManager("data.dat");
-        // bPlusTree      = new BPlusTree(archivoManager);
-
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("root");
-
-        root.setTop(buildTopBar());
-        root.setLeft(buildSidebar());
-        root.setCenter(buildContentArea());
-        root.setBottom(buildStatusBar());
-
-        Scene scene = new Scene(root, 860, 600);
-        scene.getStylesheets().add(
-                getClass().getResource("/gameindex/gameindex.css").toExternalForm()
-        );
-
-        stage.setTitle("GameIndex — Sistema de Preservación y Gestión de Videojuegos");
-        stage.setScene(scene);
-        stage.setMinWidth(760);
-        stage.setMinHeight(520);
-        stage.show();
-
-        // Panel inicial
-        switchPanel(btnInsertar, new PanelInsertar(this));
+    public VentanaPrincipal() {
+        inicializarBackend();
+        configurarVentana();
+        construirUI();
+        navegarA("INSERTAR");
+        setVisible(true);
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  BARRA SUPERIOR
-    // ══════════════════════════════════════════════════════════════
-    private HBox buildTopBar() {
-        // Logo
-        Label logo = new Label("GAMEINDEX");
-        logo.getStyleClass().add("logo-text");
-
-        Label sub = new Label("Sistema de Preservación y Gestión");
-        sub.getStyleClass().add("subtitle-text");
-
-        VBox logoBox = new VBox(2, logo, sub);
-        logoBox.setAlignment(Pos.CENTER_LEFT);
-
-        // Indicador de estado (punto verde + texto)
-        Circle dot = new Circle(4, Color.web("#34d399"));
-        Label statusRight = new Label("B+ Tree activo");
-        statusRight.getStyleClass().add("status-text");
-        HBox statusBox = new HBox(6, dot, statusRight);
-        statusBox.setAlignment(Pos.CENTER);
-
-        Label fileLabel = new Label("⬡  data.dat");
-        fileLabel.setStyle("-fx-font-size:11px; -fx-text-fill:#6b5fa8;");
-
-        HBox right = new HBox(16, statusBox, fileLabel);
-        right.setAlignment(Pos.CENTER_RIGHT);
-
-        HBox bar = new HBox(logoBox, right);
-        HBox.setHgrow(logoBox, Priority.ALWAYS);
-        bar.setAlignment(Pos.CENTER);
-        bar.getStyleClass().add("top-bar");
-        return bar;
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    //  BARRA LATERAL
-    // ══════════════════════════════════════════════════════════════
-    private VBox buildSidebar() {
-        VBox sidebar = new VBox();
-        sidebar.getStyleClass().add("sidebar");
-
-        // ── Sección Sistema ──
-        Label secSistema = new Label("SISTEMA");
-        secSistema.getStyleClass().add("nav-section-label");
-
-        btnInsertar  = navBtn("Insertar");
-        btnBuscar    = navBtn("Buscar");
-        btnRango     = navBtn("Buscar rango");
-        btnActualizar = navBtn("Actualizar");
-        btnEliminar  = navBtn("Eliminar");
-
-        // ── Sección Catálogo ──
-        Label secCatalogo = new Label("CATÁLOGO");
-        secCatalogo.getStyleClass().add("nav-section-label");
-        VBox.setMargin(secCatalogo, new Insets(14, 0, 0, 0));
-
-        btnListar = navBtn("Listar todos");
-
-        // Eventos de navegación
-        btnInsertar.setOnAction(e  -> switchPanel(btnInsertar,  new PanelInsertar(this)));
-        btnBuscar.setOnAction(e    -> switchPanel(btnBuscar,    new PanelBuscar(this)));
-        btnRango.setOnAction(e     -> switchPanel(btnRango,     new PanelBuscarRango(this)));
-        btnActualizar.setOnAction(e -> switchPanel(btnActualizar, new PanelActualizar(this)));
-        btnEliminar.setOnAction(e  -> switchPanel(btnEliminar,  new PanelEliminar(this)));
-        btnListar.setOnAction(e    -> switchPanel(btnListar,    new PanelListar(this)));
-
-        // ── Indicador B+ Tree ──
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-
-        Label bpLabel = new Label("ÍNDICE B+");
-        bpLabel.setStyle("-fx-font-size:10px; -fx-text-fill:#3a2e6a; -fx-padding: 0 0 6 0;");
-
-        ProgressBar bpBar = new ProgressBar(0.62);
-        bpBar.setStyle("-fx-accent:#7c3aed; -fx-background-color:#0d0b1e;");
-        bpBar.setMaxWidth(Double.MAX_VALUE);
-        bpBar.setPrefHeight(4);
-
-        Label bpInfo = new Label("248 / 400 nodos");
-        bpInfo.setStyle("-fx-font-size:10px; -fx-text-fill:#4a3d80; -fx-padding: 4 0 0 0;");
-
-        VBox bpBox = new VBox(4, bpLabel, bpBar, bpInfo);
-        bpBox.setPadding(new Insets(10, 12, 12, 12));
-        bpBox.setStyle("-fx-border-color: #1e1545; -fx-border-width: 1 0 0 0;");
-
-        sidebar.getChildren().addAll(
-            secSistema,
-            btnInsertar, btnBuscar, btnRango, btnActualizar, btnEliminar,
-            secCatalogo,
-            btnListar,
-            spacer,
-            bpBox
-        );
-        return sidebar;
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    //  ÁREA DE CONTENIDO
-    // ══════════════════════════════════════════════════════════════
-    private StackPane buildContentArea() {
-        contentPane = new StackPane();
-        contentPane.getStyleClass().add("content-area");
-        contentPane.setPadding(new Insets(24));
-        return contentPane;
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    //  BARRA DE ESTADO INFERIOR
-    // ══════════════════════════════════════════════════════════════
-    private HBox buildStatusBar() {
-        Label nodeLabel = new Label("Árbol B+ listo");
-        nodeLabel.getStyleClass().add("status-bar-text");
-
-        Label fileLabel = new Label("data.dat");
-        fileLabel.getStyleClass().add("status-bar-text");
-
-        statusLabel = new Label("Última operación:");
-        statusLabel.getStyleClass().add("status-bar-text");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Label versionLabel = new Label("GameIndex — Estructuras de Datos");
-        versionLabel.setStyle("-fx-font-size:10px; -fx-text-fill:#3a2e6a;");
-
-        HBox bar = new HBox(20, nodeLabel, fileLabel, statusLabel, spacer, versionLabel);
-        bar.setAlignment(Pos.CENTER_LEFT);
-        bar.getStyleClass().add("status-bar");
-        return bar;
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    //  UTILIDADES PÚBLICAS
-    // ══════════════════════════════════════════════════════════════
-
-    /** Cambia el panel visible y resalta el botón activo. */
-    public void switchPanel(Button origen, Node panel) {
-        if (activeButton != null) {
-            activeButton.getStyleClass().remove("nav-button-active");
+    private void inicializarBackend() {
+        /**
+        try {
+            java.io.File dir = new java.io.File("data");
+            if (!dir.exists()) dir.mkdirs();
+            archivoManager = new ArchivoManager("data/data.dat");
+            bPlusTree      = new BPlusTree(archivoManager);
+        } catch (Exception e) {
+            mostrarError("No se pudo inicializar:\n" + e.getMessage());
         }
-        origen.getStyleClass().add("nav-button-active");
-        activeButton = origen;
-
-        contentPane.getChildren().setAll(panel);
+         */
     }
 
-    /** Actualiza el texto de última operación en la barra inferior. */
-    public void setLastOperation(String op) {
-        statusLabel.setText("Última operación: " + op);
+    private void configurarVentana() {
+        setTitle("GameIndex — Árbol B+");
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        setMinimumSize(new Dimension(1060, 680));
+        setPreferredSize(new Dimension(1280, 760));
+        getContentPane().setBackground(Tema.BG_BASE);
+        addWindowListener(new WindowAdapter() {
+            @Override public void windowClosing(WindowEvent e) { confirmarCierre(); }
+        });
+        pack();
+        setLocationRelativeTo(null);
     }
 
-    // ── Acceso al backend ────────────────────────────────────────
-    // public ArchivoManager getArchivoManager() { return archivoManager; }
-    // public BPlusTree      getBPlusTree()      { return bPlusTree; }
-
-    // ══════════════════════════════════════════════════════════════
-    //  CONSTRUCTOR DE BOTÓN LATERAL
-    // ══════════════════════════════════════════════════════════════
-    private Button navBtn(String text) {
-        Button btn = new Button(text);
-        btn.getStyleClass().add("nav-button");
-        btn.setMaxWidth(Double.MAX_VALUE);
-        return btn;
+    private void construirUI() {
+        setLayout(new BorderLayout(0, 0));
+        add(crearSidebar(),   BorderLayout.WEST);
+        add(crearContenido(), BorderLayout.CENTER);
+        add(crearStatusBar(), BorderLayout.SOUTH);
     }
 
+    private JPanel crearSidebar() {
+        sidebarPanel = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                // Línea degradada derecha como separador visual
+                Graphics2D g2 = (Graphics2D) g.create();
+                GradientPaint gp = new GradientPaint(
+                        getWidth()-1, 0,      new Color(99,102,241,180),
+                        getWidth()-1, getHeight(), new Color(167,139,250,60)
+                );
+                g2.setPaint(gp);
+                g2.fillRect(getWidth()-1, 0, 1, getHeight());
+                g2.dispose();
+            }
+        };
+        sidebarPanel.setLayout(new BoxLayout(sidebarPanel, BoxLayout.Y_AXIS));
+        sidebarPanel.setBackground(Tema.BG_PANEL);
+        sidebarPanel.setPreferredSize(new Dimension(230, 0));
+
+        sidebarPanel.add(crearLogo());
+        sidebarPanel.add(crearSeparador());
+        sidebarPanel.add(Box.createVerticalStrut(10));
+
+        navButtons = new NavButton[PANEL_NAMES.length];
+        for (int i = 0; i < PANEL_NAMES.length; i++) {
+            if (i == 6) {
+                sidebarPanel.add(Box.createVerticalStrut(6));
+                sidebarPanel.add(crearSeparador());
+                sidebarPanel.add(Box.createVerticalStrut(6));
+            }
+            final String name = PANEL_NAMES[i];
+            navButtons[i] = new NavButton(PANEL_LABELS[i]);
+            navButtons[i].addActionListener(e -> navegarA(name));
+            sidebarPanel.add(navButtons[i]);
+            sidebarPanel.add(Box.createVerticalStrut(2));
+        }
+
+        sidebarPanel.add(Box.createVerticalGlue());
+        sidebarPanel.add(crearSeparador());
+        sidebarPanel.add(crearFooterSidebar());
+        return sidebarPanel;
+    }
+
+    private JPanel crearLogo() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Tema.BG_PANEL);
+        p.setMaximumSize(new Dimension(230, 72));
+        p.setBorder(new EmptyBorder(18, 20, 14, 16));
+
+        JLabel title = new JLabel("GameIndex");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        title.setForeground(Tema.TEXT_PRIMARY);
+
+        JLabel sub = new JLabel("Árbol B+  -  Grupo 6");
+        sub.setFont(Tema.FONT_SMALL);
+        sub.setForeground(Tema.TEXT_MUTED);
+
+        JPanel texts = new JPanel();
+        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
+        texts.setBackground(Tema.BG_PANEL);
+        texts.add(title);
+        texts.add(Box.createVerticalStrut(2));
+        texts.add(sub);
+
+        JPanel accent = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                GradientPaint gp = new GradientPaint(0, 0, Tema.GRAD_START, 0, getHeight(), Tema.GRAD_END);
+                g2.setPaint(gp);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 3, 3);
+                g2.dispose();
+            }
+        };
+        accent.setPreferredSize(new Dimension(4, 36));
+        accent.setBackground(Tema.BG_PANEL);
+
+        p.add(accent, BorderLayout.WEST);
+        p.add(Box.createHorizontalStrut(12), BorderLayout.CENTER);
+        p.add(texts, BorderLayout.EAST);
+
+        JPanel wrap = new JPanel(new BorderLayout());
+        wrap.setBackground(Tema.BG_PANEL);
+        wrap.setMaximumSize(new Dimension(230, 72));
+        wrap.add(p);
+        return wrap;
+    }
+
+    private JSeparator crearSeparador() {
+        JSeparator sep = new JSeparator();
+        sep.setForeground(Tema.BORDER);
+        sep.setMaximumSize(new Dimension(230, 1));
+        return sep;
+    }
+
+    private JPanel crearFooterSidebar() {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 10));
+        p.setBackground(Tema.BG_PANEL);
+        p.setMaximumSize(new Dimension(230, 38));
+        JLabel lbl = new JLabel("Estructuras de Datos y Laboratorio");
+        lbl.setFont(Tema.FONT_SMALL);
+        lbl.setForeground(Tema.TEXT_SUBTLE);
+        p.add(lbl);
+        return p;
+    }
+
+    private JPanel crearContenido() {
+        cardLayout   = new CardLayout();
+        contentPanel = new JPanel(cardLayout);
+        contentPanel.setBackground(Tema.BG_SURFACE);
+
+        contentPanel.add(new PanelInsertar(archivoManager, bPlusTree, this),    "INSERTAR");
+        contentPanel.add(new PanelBuscar(archivoManager, bPlusTree, this),      "BUSCAR");
+        contentPanel.add(new PanelBuscarRango(archivoManager, bPlusTree, this), "RANGO");
+        contentPanel.add(new PanelActualizar(archivoManager, bPlusTree, this),  "ACTUALIZAR");
+        contentPanel.add(new PanelEliminar(archivoManager, bPlusTree, this),    "ELIMINAR");
+        contentPanel.add(new PanelListar(archivoManager, bPlusTree, this),      "LISTAR");
+        contentPanel.add(new PanelArbol(archivoManager, bPlusTree, this),       "ARBOL");
+
+        return contentPanel;
+    }
+
+    private JPanel crearStatusBar() {
+        JPanel bar = new JPanel(new BorderLayout());
+        bar.setBackground(Tema.BG_PANEL);
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, Tema.BORDER),
+                new EmptyBorder(5, 20, 5, 20)
+        ));
+        bar.setPreferredSize(new Dimension(0, 28));
+
+        statusLabel = new JLabel("Sistema listo");
+        statusLabel.setFont(Tema.FONT_SMALL);
+        statusLabel.setForeground(Tema.TEXT_MUTED);
+
+        recordCountLabel = new JLabel("Registros: -");
+        recordCountLabel.setFont(Tema.FONT_SMALL);
+        recordCountLabel.setForeground(Tema.TEXT_MUTED);
+
+        bar.add(statusLabel,      BorderLayout.WEST);
+        bar.add(recordCountLabel, BorderLayout.EAST);
+        return bar;
+    }
+
+    public void navegarA(String panelName) {
+        cardLayout.show(contentPanel, panelName);
+        for (int i = 0; i < PANEL_NAMES.length; i++)
+            navButtons[i].setActivo(PANEL_NAMES[i].equals(panelName));
+        int idx = java.util.Arrays.asList(PANEL_NAMES).indexOf(panelName);
+        setStatus("Sección: " + (idx >= 0 ? PANEL_LABELS[idx] : panelName));
+        actualizarConteoRegistros();
+    }
+
+    public void setStatus(String msg) {
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText(msg);
+            statusLabel.setForeground(Tema.TEXT_MUTED);
+        });
+    }
+
+    public void setStatusOk(String msg) {
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText(msg);
+            statusLabel.setForeground(Tema.SUCCESS);
+            Timer t = new Timer(4000, e -> {
+                statusLabel.setText("Sistema listo");
+                statusLabel.setForeground(Tema.TEXT_MUTED);
+            });
+            t.setRepeats(false); t.start();
+        });
+    }
+
+    public void setStatusError(String msg) {
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText(msg);
+            statusLabel.setForeground(Tema.DANGER);
+            Timer t = new Timer(5000, e -> {
+                statusLabel.setText("Sistema listo");
+                statusLabel.setForeground(Tema.TEXT_MUTED);
+            });
+            t.setRepeats(false); t.start();
+        });
+    }
+
+    public void actualizarConteoRegistros() {
+        /**
+        SwingUtilities.invokeLater(() -> {
+            try {
+                if (archivoManager != null)
+                    recordCountLabel.setText("Registros: " + archivoManager.getTotalRegistros());
+            } catch (Exception ex) {
+                recordCountLabel.setText("Registros: -");
+            }
+        });
+         */
+    }
+
+    public void mostrarError(String msg) {
+        JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void confirmarCierre() {
+        /**
+        int r = JOptionPane.showConfirmDialog(this,
+                "¿Deseas cerrar GameIndex?\nLos datos están guardados en disco.",
+                "Confirmar salida", JOptionPane.YES_NO_OPTION);
+        if (r == JOptionPane.YES_OPTION) {
+            try { if (archivoManager != null) archivoManager.cerrar(); } catch (Exception ignored) {}
+            dispose(); System.exit(0);
+        }
+         */
+    }
+
+    public ArchivoManager getArchivoManager() { return archivoManager; }
+    public BPlusTree      getBPlusTree()       { return bPlusTree; }
+
+    static class NavButton extends JButton {
+
+        private boolean activo = false;
+
+        NavButton(String label) {
+            super(label);
+            setFont(Tema.FONT_NAV);
+            setForeground(Tema.TEXT_MUTED);
+            setBackground(Tema.BG_PANEL);
+            setBorderPainted(false);
+            setFocusPainted(false);
+            setContentAreaFilled(false);
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setHorizontalAlignment(SwingConstants.LEFT);
+            setBorder(new EmptyBorder(10, 24, 10, 16));
+            setMaximumSize(new Dimension(230, 40));
+            setPreferredSize(new Dimension(230, 40));
+
+            addMouseListener(new MouseAdapter() {
+                @Override public void mouseEntered(MouseEvent e) {
+                    if (!activo) setForeground(Tema.TEXT_PRIMARY);
+                }
+                @Override public void mouseExited(MouseEvent e) {
+                    if (!activo) setForeground(Tema.TEXT_MUTED);
+                }
+            });
+        }
+
+        public void setActivo(boolean v) {
+            activo = v;
+            setForeground(v ? Tema.ACCENT_BRIGHT : Tema.TEXT_MUTED);
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            if (activo) {
+                // Fondo degradado sutil
+                GradientPaint gp = new GradientPaint(
+                        0, 0, new Color(99, 102, 241, 45),
+                        getWidth(), 0, new Color(167, 139, 250, 20)
+                );
+                g2.setPaint(gp);
+                g2.fillRoundRect(4, 1, getWidth()-8, getHeight()-2, 8, 8);
+
+                // Barra izquierda con degradado
+                GradientPaint bar = new GradientPaint(
+                        0, 0,           Tema.GRAD_START,
+                        0, getHeight(), Tema.GRAD_END
+                );
+                g2.setPaint(bar);
+                g2.fillRoundRect(0, 4, 3, getHeight()-8, 3, 3);
+            } else if (getModel().isRollover()) {
+                g2.setColor(Tema.BG_HOVER);
+                g2.fillRoundRect(4, 1, getWidth()-8, getHeight()-2, 8, 8);
+            }
+
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    // ====================================================
+    // Main
+    // ====================================================
     public static void main(String[] args) {
-        launch(args);
+        try {
+            FlatDarkLaf.setup();
+            Tema.aplicarUIManager();
+        } catch (Exception e) {
+            System.err.println("FlatLaf no disponible.");
+        }
+        SwingUtilities.invokeLater(VentanaPrincipal::new);
     }
 }

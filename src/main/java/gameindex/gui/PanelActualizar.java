@@ -1,215 +1,208 @@
 package gameindex.gui;
 
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import gameindex.storage.ArchivoManager;
+import gameindex.tree.BPlusTree;
+import gameindex.model.Videojuego;
 
-/**
- * PanelActualizar — carga un registro por título, permite editarlo
- * y guarda los cambios en disco y en el índice B+.
- */
-public class PanelActualizar extends VBox {
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
 
+public class PanelActualizar extends JPanel {
+
+    private final ArchivoManager   archivoManager;
+    private final BPlusTree        bPlusTree;
     private final VentanaPrincipal ventana;
 
-    private TextField tfBusqueda;
-    private TextField tfTitulo, tfDesarrollador, tfAnio, tfPlataformas, tfGenero;
-    private TextArea  taSinopsis;
-    private VBox      editCard;
+    private JTextField txtBusqueda;
+    private JTextField txtTitulo, txtDesarrollador, txtAnio, txtPlataformas, txtGenero;
+    private JTextArea  txtSinopsis;
 
-    public PanelActualizar(VentanaPrincipal ventana) {
-        this.ventana = ventana;
-        setSpacing(18);
-        setFillWidth(true);
-        VBox.setVgrow(this, Priority.ALWAYS);
+    private String tituloOriginal = null;
+    private long   offsetActual   = -1;
 
-        getChildren().addAll(
-            buildHeader(),
-            buildSearchCard(),
-            buildEditCard()
-        );
+    private JPanel panelForm;
+
+    public PanelActualizar(ArchivoManager am, BPlusTree bt, VentanaPrincipal vp) {
+        this.archivoManager = am;
+        this.bPlusTree      = bt;
+        this.ventana        = vp;
+        construirUI();
     }
 
-    // ── Encabezado ───────────────────────────────────────────────
-    private HBox buildHeader() {
-        Label icon  = new Label("✎");
-        icon.setStyle("-fx-font-size:18px; -fx-text-fill:#7c3aed;");
-        Label title = new Label("Actualizar registro");
-        title.getStyleClass().add("panel-title");
-        Label badge = new Label("PanelActualizar");
-        badge.getStyleClass().add("panel-badge");
-        HBox h = new HBox(12, icon, title, badge);
-        h.setAlignment(Pos.CENTER_LEFT);
-        return h;
+    private void construirUI() {
+        setLayout(new BorderLayout());
+        setBackground(Tema.BG_SURFACE);
+        setBorder(new EmptyBorder(32, 40, 32, 40));
+
+        add(crearEncabezado(), BorderLayout.NORTH);
+        add(crearCuerpo(),     BorderLayout.CENTER);
     }
 
-    // ── Barra de localización ────────────────────────────────────
-    private VBox buildSearchCard() {
-        tfBusqueda = new TextField();
-        tfBusqueda.setPromptText("Título actual del videojuego...");
-        tfBusqueda.getStyleClass().add("gi-input");
-        tfBusqueda.setMaxWidth(Double.MAX_VALUE);
-        tfBusqueda.setOnAction(e -> cargar());
+    private JPanel crearEncabezado() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Tema.BG_SURFACE);
+        p.setBorder(new EmptyBorder(0, 0, 24, 0));
 
-        Button btnCargar = new Button("⬇  Cargar");
-        btnCargar.getStyleClass().add("btn-secondary");
-        btnCargar.setOnAction(e -> cargar());
+        JLabel titulo = Tema.label("Actualizar Videojuego");
+        titulo.setFont(Tema.FONT_TITLE);
 
-        HBox row = new HBox(8, tfBusqueda, btnCargar);
-        HBox.setHgrow(tfBusqueda, Priority.ALWAYS);
-        row.setAlignment(Pos.CENTER);
+        JLabel sub = Tema.hint("Busca el título que quieres modificar y edita los campos");
 
-        VBox card = new VBox(12, cardTitle("Localizar registro"), row);
-        card.getStyleClass().add("card");
-        return card;
+        JPanel texts = new JPanel();
+        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
+        texts.setBackground(Tema.BG_SURFACE);
+        texts.add(titulo);
+        texts.add(Box.createVerticalStrut(4));
+        texts.add(sub);
+        p.add(texts, BorderLayout.WEST);
+        return p;
     }
 
-    // ── Formulario de edición ────────────────────────────────────
-    private VBox buildEditCard() {
-        ColumnConstraints col = new ColumnConstraints();
-        col.setPercentWidth(50);
+    private JPanel crearCuerpo() {
+        JPanel cuerpo = new JPanel();
+        cuerpo.setLayout(new BoxLayout(cuerpo, BoxLayout.Y_AXIS));
+        cuerpo.setBackground(Tema.BG_SURFACE);
 
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(12);
-        grid.getColumnConstraints().addAll(col, col);
+        // Barra de búsqueda
+        JPanel barra = new JPanel(new BorderLayout(12, 0));
+        barra.setBackground(Tema.BG_CARD);
+        barra.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Tema.BORDER),
+                new EmptyBorder(16, 20, 16, 20)
+        ));
+        barra.setMaximumSize(new Dimension(Integer.MAX_VALUE, 76));
 
-        tfTitulo        = editField();
-        tfDesarrollador = editField();
-        tfAnio          = editField();
-        tfPlataformas   = editField();
-        tfGenero        = editField();
-        taSinopsis      = new TextArea();
-        taSinopsis.getStyleClass().add("gi-textarea");
-        taSinopsis.setPrefRowCount(3);
-        taSinopsis.setWrapText(true);
+        txtBusqueda = new JTextField();
+        Tema.estilizarTextField(txtBusqueda);
+        txtBusqueda.addActionListener(e -> cargarRegistro());
 
-        grid.add(fieldBox("Título",        tfTitulo),        0, 0, 2, 1);
-        grid.add(fieldBox("Desarrollador", tfDesarrollador), 0, 1);
-        grid.add(fieldBox("Año",           tfAnio),          1, 1);
-        grid.add(fieldBox("Plataformas",   tfPlataformas),   0, 2);
-        grid.add(fieldBox("Género",        tfGenero),        1, 2);
-        grid.add(fieldBox("Sinopsis",      taSinopsis),      0, 3, 2, 1);
+        JLabel lblTitulo = Tema.hint("Título actual:  ");
+        lblTitulo.setFont(Tema.FONT_NAV);
 
-        Button btnCancelar = new Button("✕  Cancelar");
-        btnCancelar.getStyleClass().add("btn-secondary");
-        btnCancelar.setOnAction(e -> limpiarEdicion());
+        JButton btnCargar = Tema.botonPrimario("Cargar");
+        btnCargar.setPreferredSize(new Dimension(130, 38));
+        btnCargar.addActionListener(e -> cargarRegistro());
 
-        Button btnGuardar = new Button("✓  Guardar cambios");
-        btnGuardar.getStyleClass().add("btn-primary");
-        btnGuardar.setOnAction(e -> guardar());
+        barra.add(lblTitulo,    BorderLayout.WEST);
+        barra.add(txtBusqueda,  BorderLayout.CENTER);
+        barra.add(btnCargar,    BorderLayout.EAST);
 
-        HBox botones = new HBox(10, btnCancelar, btnGuardar);
-        botones.setAlignment(Pos.CENTER_RIGHT);
-        VBox.setMargin(botones, new Insets(4, 0, 0, 0));
+        // Formulario (oculto hasta cargar)
+        panelForm = crearFormulario();
+        panelForm.setVisible(false);
 
-        editCard = new VBox(14, cardTitle("Editar campos"), grid, botones);
-        editCard.getStyleClass().add("card");
-        editCard.setOpacity(0.4); // deshabilitado hasta cargar
-        VBox.setVgrow(editCard, Priority.ALWAYS);
-        return editCard;
+        cuerpo.add(barra);
+        cuerpo.add(Box.createVerticalStrut(16));
+        cuerpo.add(panelForm);
+        return cuerpo;
     }
 
-    // ── Lógica ───────────────────────────────────────────────────
-    private void cargar() {
-        String titulo = tfBusqueda.getText().trim();
-        if (titulo.isBlank()) return;
+    private JPanel crearFormulario() {
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setBackground(Tema.BG_CARD);
+        form.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Tema.BORDER),
+                new EmptyBorder(24, 28, 24, 28)
+        ));
+        form.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 
-        // ── Integrar backend ─────────────────────────────────────
-        // long offset = ventana.getBPlusTree().buscar(titulo);
-        // if (offset == -1) { showError("No encontrado: \"" + titulo + "\""); return; }
-        // Videojuego v = ventana.getArchivoManager().leerRegistro(offset);
-        // rellenar(v);
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets  = new Insets(6, 0, 6, 12);
+        gc.anchor  = GridBagConstraints.WEST;
+        gc.fill    = GridBagConstraints.HORIZONTAL;
 
-        // Datos de demostración (eliminar al integrar el backend):
-        if (titulo.equalsIgnoreCase("Dark Souls III")) {
-            rellenarDemo("Dark Souls III", "FromSoftware", "2016",
-                "PC, PS4, Xbox One", "Action RPG",
-                "Tercer juego de la saga Dark Souls, ambientado en el reino de Lothric.");
-        } else {
-            showError("No se encontró el videojuego: \"" + titulo + "\"");
+        txtTitulo        = new JTextField(); Tema.estilizarTextField(txtTitulo);
+        txtDesarrollador = new JTextField(); Tema.estilizarTextField(txtDesarrollador);
+        txtAnio          = new JTextField(); Tema.estilizarTextField(txtAnio);
+        txtPlataformas   = new JTextField(); Tema.estilizarTextField(txtPlataformas);
+        txtGenero        = new JTextField(); Tema.estilizarTextField(txtGenero);
+        txtSinopsis      = new JTextArea(4, 30);
+        Tema.estilizarTextArea(txtSinopsis);
+
+        String[] etiquetas = {"Título", "Desarrollador", "Año", "Plataformas", "Género"};
+        JTextField[] campos = {txtTitulo, txtDesarrollador, txtAnio, txtPlataformas, txtGenero};
+
+        for (int i = 0; i < campos.length; i++) {
+            gc.gridx = 0; gc.gridy = i * 2;     gc.weightx = 0; gc.gridwidth = 1;
+            form.add(Tema.label(etiquetas[i]), gc);
+            gc.gridy = i * 2 + 1; gc.weightx = 1; gc.gridwidth = 2;
+            form.add(campos[i], gc);
         }
 
-        ventana.setLastOperation("cargar(\"" + titulo + "\")");
+        int row = campos.length * 2;
+        gc.gridx = 0; gc.gridy = row;     gc.weightx = 0; gc.gridwidth = 1;
+        form.add(Tema.label("Sinopsis"), gc);
+        gc.gridy = row + 1; gc.weightx = 1; gc.gridwidth = 2;
+        gc.fill  = GridBagConstraints.BOTH; gc.weighty = 1;
+        JScrollPane sinScroll = new JScrollPane(txtSinopsis);
+        sinScroll.setBorder(BorderFactory.createLineBorder(Tema.BORDER));
+        form.add(sinScroll, gc);
+        gc.fill = GridBagConstraints.HORIZONTAL; gc.weighty = 0;
+
+        // Botones
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        btns.setBackground(Tema.BG_CARD);
+        JButton btnCancelar   = Tema.botonSecundario("Cancelar");
+        JButton btnActualizar = Tema.botonPrimario("Actualizar");
+        btnActualizar.setPreferredSize(new Dimension(160, 38));
+        btnCancelar.addActionListener(e -> cancelar());
+        btnActualizar.addActionListener(e -> actualizar());
+        btns.add(btnCancelar);
+        btns.add(btnActualizar);
+
+        gc.gridx = 0; gc.gridy = row + 2; gc.gridwidth = 2;
+        gc.insets = new Insets(20, 0, 0, 0);
+        form.add(btns, gc);
+
+        return form;
     }
 
-    private void rellenarDemo(String titulo, String dev, String anio,
-                               String plat, String genero, String sin) {
-        tfTitulo.setText(titulo);
-        tfDesarrollador.setText(dev);
-        tfAnio.setText(anio);
-        tfPlataformas.setText(plat);
-        tfGenero.setText(genero);
-        taSinopsis.setText(sin);
-        editCard.setOpacity(1.0);
-        editCard.setDisable(false);
+    // ── Lógica ─────────────────────────────────────────────────────────────────
+    private void cargarRegistro() {
+        /**
+         String titulo = txtBusqueda.getText().trim();
+         if (titulo.isEmpty()) return;
+         try {
+         Long offset = bPlusTree.buscar(titulo);
+         if (offset == null) { ventana.setStatusError("No se encontró: " + titulo); panelForm.setVisible(false); return; }
+         Videojuego v = archivoManager.leerRegistro(offset);
+         if (v == null || v.eliminado == 1) { ventana.setStatusError("El registro fue eliminado."); panelForm.setVisible(false); return; }
+         tituloOriginal = v.titulo.trim(); offsetActual = offset;
+         txtTitulo.setText(v.titulo.trim()); txtDesarrollador.setText(v.desarrollador.trim());
+         txtAnio.setText(String.valueOf(v.anio)); txtPlataformas.setText(v.plataformas.trim());
+         txtGenero.setText(v.genero.trim()); txtSinopsis.setText(v.sinopsis.trim());
+         panelForm.setVisible(true);
+         ventana.setStatusOk("Registro cargado: " + tituloOriginal);
+         } catch (Exception ex) { ventana.setStatusError("Error al cargar: " + ex.getMessage()); }
+         */
     }
 
-    // Usar al integrar el backend real:
-    // private void rellenar(Videojuego v) {
-    //     tfTitulo.setText(v.getTitulo());
-    //     tfDesarrollador.setText(v.getDesarrollador());
-    //     tfAnio.setText(String.valueOf(v.getAnio()));
-    //     tfPlataformas.setText(v.getPlataformas());
-    //     tfGenero.setText(v.getGenero());
-    //     taSinopsis.setText(v.getSinopsis());
-    //     editCard.setOpacity(1.0);
-    //     editCard.setDisable(false);
-    // }
-
-    private void guardar() {
-        if (tfTitulo.getText().isBlank()) {
-            showError("El título no puede estar vacío.");
-            return;
-        }
-
-        // ── Integrar backend ─────────────────────────────────────
-        // String tituloOriginal = tfBusqueda.getText().trim();
-        // Videojuego v = new Videojuego(...campos...);
-        // ventana.getBPlusTree().actualizar(tituloOriginal, v,
-        //                                   ventana.getArchivoManager());
-
-        ventana.setLastOperation("actualizar(\"" + tfTitulo.getText().trim() + "\")");
-        showSuccess("Registro actualizado correctamente.");
-        limpiarEdicion();
+    private void actualizar() {
+        /**
+         String nuevoTitulo = txtTitulo.getText().trim(); String desarrollador = txtDesarrollador.getText().trim();
+         String anioStr = txtAnio.getText().trim(); String plataformas = txtPlataformas.getText().trim();
+         String genero = txtGenero.getText().trim(); String sinopsis = txtSinopsis.getText().trim();
+         if (nuevoTitulo.isEmpty() || desarrollador.isEmpty() || anioStr.isEmpty() || plataformas.isEmpty() || genero.isEmpty() || sinopsis.isEmpty()) {
+         ventana.setStatusError("Todos los campos son obligatorios."); return;
+         }
+         int anio; try { anio = Integer.parseInt(anioStr); } catch (NumberFormatException ex) { ventana.setStatusError("El año debe ser un número válido."); return; }
+         int confirm = JOptionPane.showConfirmDialog(ventana, "¿Confirmas la actualización de \"" + tituloOriginal + "\"?", "Confirmar actualización", JOptionPane.YES_NO_OPTION);
+         if (confirm != JOptionPane.YES_OPTION) return;
+         try {
+         Videojuego v = new Videojuego(nuevoTitulo, desarrollador, anio, plataformas, genero, sinopsis);
+         archivoManager.escribirRegistro(v, offsetActual); bPlusTree.actualizar(tituloOriginal, nuevoTitulo, offsetActual);
+         ventana.setStatusOk("\"" + tituloOriginal + "\" actualizado correctamente."); cancelar();
+         } catch (Exception ex) { ventana.setStatusError("Error al actualizar: " + ex.getMessage()); }
+         */
     }
 
-    private void limpiarEdicion() {
-        tfTitulo.clear(); tfDesarrollador.clear(); tfAnio.clear();
-        tfPlataformas.clear(); tfGenero.clear(); taSinopsis.clear();
-        editCard.setOpacity(0.4);
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────
-    private TextField editField() {
-        TextField tf = new TextField();
-        tf.getStyleClass().add("gi-input");
-        tf.setMaxWidth(Double.MAX_VALUE);
-        return tf;
-    }
-
-    private VBox fieldBox(String labelText, javafx.scene.Node input) {
-        Label lbl = new Label(labelText);
-        lbl.getStyleClass().add("field-label");
-        VBox box = new VBox(5, lbl, input);
-        GridPane.setHgrow(box, Priority.ALWAYS);
-        return box;
-    }
-
-    private Label cardTitle(String text) {
-        Label l = new Label(text.toUpperCase());
-        l.getStyleClass().add("card-label");
-        return l;
-    }
-
-    private void showError(String msg) {
-        Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
-        a.setHeaderText("Error"); a.setTitle("GameIndex"); a.showAndWait();
-    }
-
-    private void showSuccess(String msg) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION, msg, ButtonType.OK);
-        a.setHeaderText("Operación exitosa"); a.setTitle("GameIndex"); a.showAndWait();
+    private void cancelar() {
+        txtBusqueda.setText("");
+        txtTitulo.setText(""); txtDesarrollador.setText("");
+        txtAnio.setText("");   txtPlataformas.setText("");
+        txtGenero.setText(""); txtSinopsis.setText("");
+        tituloOriginal = null; offsetActual = -1;
+        panelForm.setVisible(false);
     }
 }

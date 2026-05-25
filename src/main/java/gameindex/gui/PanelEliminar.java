@@ -1,180 +1,206 @@
 package gameindex.gui;
 
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.scene.shape.Circle;
-import javafx.scene.paint.Color;
+import gameindex.storage.ArchivoManager;
+import gameindex.tree.BPlusTree;
+import gameindex.model.Videojuego;
 
-/**
- * PanelEliminar — eliminación lógica de registros.
- * Muestra una caja de confirmación antes de marcar
- * el campo "eliminado = 1" en disco.
- */
-public class PanelEliminar extends VBox {
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
 
+public class PanelEliminar extends JPanel {
+
+    private final ArchivoManager   archivoManager;
+    private final BPlusTree        bPlusTree;
     private final VentanaPrincipal ventana;
 
-    private TextField tfBusqueda;
-    private VBox      confirmBox;
-    private Label     lblTituloConfirm;
+    private JTextField txtBusqueda;
+    private JPanel     panelConfirmacion;
+    private JLabel     lblInfo;
 
-    // Título actualmente verificado
-    private String tituloVerificado = null;
+    private String tituloEncontrado = null;
 
-    public PanelEliminar(VentanaPrincipal ventana) {
-        this.ventana = ventana;
-        setSpacing(18);
-        setFillWidth(true);
-        VBox.setVgrow(this, Priority.ALWAYS);
-
-        getChildren().addAll(
-            buildHeader(),
-            buildSearchCard(),
-            buildConfirmBox()
-        );
+    public PanelEliminar(ArchivoManager am, BPlusTree bt, VentanaPrincipal vp) {
+        this.archivoManager = am;
+        this.bPlusTree      = bt;
+        this.ventana        = vp;
+        construirUI();
     }
 
-    // ── Encabezado ───────────────────────────────────────────────
-    private HBox buildHeader() {
-        Label icon  = new Label("🗑");
-        icon.setStyle("-fx-font-size:18px;");
-        Label title = new Label("Eliminación lógica");
-        title.getStyleClass().add("panel-title");
-        Label badge = new Label("PanelEliminar");
-        badge.getStyleClass().add("panel-badge");
-        HBox h = new HBox(12, icon, title, badge);
-        h.setAlignment(Pos.CENTER_LEFT);
-        return h;
+    private void construirUI() {
+        setLayout(new BorderLayout());
+        setBackground(Tema.BG_SURFACE);
+        setBorder(new EmptyBorder(32, 40, 32, 40));
+
+        add(crearEncabezado(),  BorderLayout.NORTH);
+        add(crearCuerpo(),      BorderLayout.CENTER);
     }
 
-    // ── Barra de búsqueda ────────────────────────────────────────
-    private VBox buildSearchCard() {
-        tfBusqueda = new TextField();
-        tfBusqueda.setPromptText("Título del videojuego a eliminar...");
-        tfBusqueda.getStyleClass().add("gi-input");
-        tfBusqueda.setMaxWidth(Double.MAX_VALUE);
-        tfBusqueda.setOnAction(e -> verificar());
+    private JPanel crearEncabezado() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Tema.BG_SURFACE);
+        p.setBorder(new EmptyBorder(0, 0, 24, 0));
 
-        Button btnVerificar = new Button("🔍  Verificar");
-        btnVerificar.getStyleClass().add("btn-secondary");
-        btnVerificar.setOnAction(e -> verificar());
+        JLabel titulo = new JLabel("Eliminar Videojuego");
+        titulo.setFont(Tema.FONT_TITLE);
+        titulo.setForeground(Tema.TEXT_PRIMARY);
 
-        HBox row = new HBox(8, tfBusqueda, btnVerificar);
-        HBox.setHgrow(tfBusqueda, Priority.ALWAYS);
-        row.setAlignment(Pos.CENTER);
+        JLabel sub = new JLabel("Eliminación lógica - el registro se marca como eliminado sin borrarse físicamente");
+        sub.setFont(Tema.FONT_BODY);
+        sub.setForeground(Tema.TEXT_MUTED);
 
-        VBox card = new VBox(12, cardTitle("Seleccionar registro"), row);
-        card.getStyleClass().add("card");
+        JPanel texts = new JPanel();
+        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
+        texts.setBackground(Tema.BG_SURFACE);
+        texts.add(titulo);
+        texts.add(Box.createVerticalStrut(4));
+        texts.add(sub);
+        p.add(texts, BorderLayout.WEST);
+        return p;
+    }
+
+    private JPanel crearCuerpo() {
+        JPanel cuerpo = new JPanel();
+        cuerpo.setLayout(new BoxLayout(cuerpo, BoxLayout.Y_AXIS));
+        cuerpo.setBackground(Tema.BG_SURFACE);
+
+        // Barra de búsqueda
+        JPanel barra = new JPanel(new BorderLayout(12, 0));
+        barra.setBackground(Tema.BG_CARD);
+        barra.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Tema.BORDER),
+                new EmptyBorder(16, 20, 16, 20)
+        ));
+        barra.setMaximumSize(new Dimension(Integer.MAX_VALUE, 76));
+
+        txtBusqueda = crearTextField();
+        txtBusqueda.addActionListener(e -> buscarParaEliminar());
+
+        JButton btnBuscar = crearBoton("Buscar", Tema.ACCENT);
+        btnBuscar.addActionListener(e -> buscarParaEliminar());
+
+        barra.add(new JLabel("Título:  ") {{
+            setFont(Tema.FONT_NAV);
+            setForeground(Tema.TEXT_MUTED);
+        }}, BorderLayout.WEST);
+        barra.add(txtBusqueda, BorderLayout.CENTER);
+        barra.add(btnBuscar,   BorderLayout.EAST);
+
+        // Panel de confirmación (aparece tras encontrar el registro)
+        panelConfirmacion = crearPanelConfirmacion();
+        panelConfirmacion.setVisible(false);
+
+        cuerpo.add(barra);
+        cuerpo.add(Box.createVerticalStrut(20));
+        cuerpo.add(panelConfirmacion);
+        return cuerpo;
+    }
+
+    private JPanel crearPanelConfirmacion() {
+        JPanel card = new JPanel(new BorderLayout(0, 20));
+        card.setBackground(Tema.BG_CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 4, 1, 1, Tema.DANGER),
+                new EmptyBorder(24, 28, 24, 28)
+        ));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+
+        // Advertencia
+        JPanel top = new JPanel(new BorderLayout());
+        top.setBackground(Tema.BG_CARD);
+
+        JLabel icono = new JLabel("⚠");
+        icono.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
+        icono.setForeground(Tema.DANGER);
+        icono.setBorder(new EmptyBorder(0, 0, 0, 12));
+
+        lblInfo = new JLabel();
+        lblInfo.setFont(Tema.FONT_BODY);
+        lblInfo.setForeground(Tema.TEXT_PRIMARY);
+
+        top.add(icono,   BorderLayout.WEST);
+        top.add(lblInfo, BorderLayout.CENTER);
+
+        // Botones
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        btns.setBackground(Tema.BG_CARD);
+
+        JButton btnCancelar  = crearBoton("Cancelar",           Tema.BG_SURFACE);
+        JButton btnConfirmar = crearBoton("Sí, eliminar",       Tema.DANGER);
+        btnCancelar.setForeground(Tema.TEXT_MUTED);
+        btnConfirmar.setForeground(Color.WHITE);
+
+        btnCancelar.addActionListener(e  -> cancelar());
+        btnConfirmar.addActionListener(e -> confirmarEliminacion());
+
+        btns.add(btnCancelar);
+        btns.add(btnConfirmar);
+
+        card.add(top,  BorderLayout.CENTER);
+        card.add(btns, BorderLayout.SOUTH);
         return card;
     }
 
-    // ── Caja de confirmación ─────────────────────────────────────
-    private VBox buildConfirmBox() {
-        // Icono de advertencia
-        Label warningIcon = new Label("⚠");
-        warningIcon.setStyle(
-            "-fx-font-size:22px; -fx-text-fill:#fca5a5;" +
-            "-fx-background-color:#4c1019; -fx-background-radius:22px;" +
-            "-fx-min-width:44px; -fx-min-height:44px;" +
-            "-fx-alignment:center; -fx-padding: 0;"
-        );
+    private void buscarParaEliminar() {
+        /**
+         String titulo = txtBusqueda.getText().trim();
+         if (titulo.isEmpty()) return;
 
-        Label confirmTitle = new Label("¿Confirmar eliminación?");
-        confirmTitle.getStyleClass().add("confirm-title");
+         try {
+         Long offset = bPlusTree.buscar(titulo);
+         if (offset == null) {
+         ventana.setStatusError("No se encontró: " + titulo);
+         panelConfirmacion.setVisible(false);
+         return;
+         }
+         Videojuego v = archivoManager.leerRegistro(offset);
+         if (v == null || v.eliminado == 1) {
+         ventana.setStatusError("El registro ya fue eliminado anteriormente.");
+         panelConfirmacion.setVisible(false);
+         return;
+         }
 
-        lblTituloConfirm = new Label(
-            "Selecciona un videojuego y presiona Verificar."
-        );
-        lblTituloConfirm.getStyleClass().add("confirm-text");
-        lblTituloConfirm.setWrapText(true);
-        lblTituloConfirm.setMaxWidth(320);
-
-        Button btnCancelar = new Button("✕  Cancelar");
-        btnCancelar.getStyleClass().add("btn-secondary");
-        btnCancelar.setOnAction(e -> cancelar());
-
-        Button btnEliminar = new Button("🗑  Eliminar lógicamente");
-        btnEliminar.getStyleClass().add("btn-danger");
-        btnEliminar.setOnAction(e -> eliminar());
-        btnEliminar.setDisable(true);  // se habilita solo al verificar
-
-        // Guardar referencia al botón para habilitarlo después
-        btnEliminar.setId("btn-eliminar-confirmar");
-
-        HBox botones = new HBox(10, btnCancelar, btnEliminar);
-        botones.setAlignment(Pos.CENTER);
-        VBox.setMargin(botones, new Insets(4, 0, 0, 0));
-
-        confirmBox = new VBox(14, warningIcon, confirmTitle, lblTituloConfirm, botones);
-        confirmBox.setAlignment(Pos.CENTER);
-        confirmBox.getStyleClass().add("confirm-box");
-        confirmBox.setMaxWidth(Double.MAX_VALUE);
-        VBox.setVgrow(confirmBox, Priority.ALWAYS);
-        return confirmBox;
+         tituloEncontrado = v.titulo.trim();
+         lblInfo.setText("<html>¿Estás seguro de que deseas eliminar <b>"
+         + tituloEncontrado + "</b>?<br>"
+         + "<span style='color:#8b949e'>Esta acción marcará el registro como eliminado.</span></html>");
+         panelConfirmacion.setVisible(true);
+         ventana.setStatus("Confirma la eliminación de: " + tituloEncontrado);
+         } catch (Exception ex) {
+         ventana.setStatusError("Error al buscar: " + ex.getMessage());
+         }
+         */
     }
 
-    // ── Lógica ───────────────────────────────────────────────────
-    private void verificar() {
-        String titulo = tfBusqueda.getText().trim();
-        if (titulo.isBlank()) return;
-
-        // ── Integrar backend ─────────────────────────────────────
-        // long offset = ventana.getBPlusTree().buscar(titulo);
-        // if (offset == -1) {
-        //     lblTituloConfirm.setText("No se encontró: \"" + titulo + "\"");
-        //     lblTituloConfirm.setStyle("-fx-text-fill:#f87171; ...");
-        //     tituloVerificado = null;
-        //     return;
-        // }
-        // tituloVerificado = titulo;
-
-        // Demostración:
-        tituloVerificado = titulo;
-        lblTituloConfirm.setText(
-            "El registro \"" + titulo + "\" será marcado como eliminado lógicamente " +
-            "(eliminado = 1). No se borrará físicamente del archivo data.dat ni del índice B+."
-        );
-        lblTituloConfirm.setStyle("-fx-font-size:12px; -fx-text-fill:#6b5fa8; -fx-wrap-text:true;");
-
-        // Habilitar botón de eliminar
-        Button btnElim = (Button) confirmBox.lookup("#btn-eliminar-confirmar");
-        if (btnElim != null) btnElim.setDisable(false);
-
-        ventana.setLastOperation("buscar(\"" + titulo + "\")");
-    }
-
-    private void eliminar() {
-        if (tituloVerificado == null) return;
-
-        // ── Integrar backend ─────────────────────────────────────
-        // ventana.getBPlusTree().eliminarLogico(tituloVerificado,
-        //                                       ventana.getArchivoManager());
-
-        ventana.setLastOperation("eliminarLogico(\"" + tituloVerificado + "\")");
-        showSuccess("\"" + tituloVerificado + "\" eliminado lógicamente.");
-        cancelar();
+    private void confirmarEliminacion() {
+        /**
+         if (tituloEncontrado == null) return;
+         try {
+         bPlusTree.eliminarLogico(tituloEncontrado);
+         ventana.setStatusOk("\"" + tituloEncontrado + "\" eliminado correctamente.");
+         ventana.actualizarConteoRegistros();
+         cancelar();
+         } catch (Exception ex) {
+         ventana.setStatusError("Error al eliminar: " + ex.getMessage());
+         }
+         */
     }
 
     private void cancelar() {
-        tfBusqueda.clear();
-        tituloVerificado = null;
-        lblTituloConfirm.setText("Selecciona un videojuego y presiona Verificar.");
-        lblTituloConfirm.setStyle("-fx-font-size:12px; -fx-text-fill:#6b5fa8;");
-        Button btnElim = (Button) confirmBox.lookup("#btn-eliminar-confirmar");
-        if (btnElim != null) btnElim.setDisable(true);
+        txtBusqueda.setText("");
+        tituloEncontrado = null;
+        panelConfirmacion.setVisible(false);
     }
 
-    // ── Helpers ──────────────────────────────────────────────────
-    private Label cardTitle(String text) {
-        Label l = new Label(text.toUpperCase());
-        l.getStyleClass().add("card-label");
-        return l;
+    private JTextField crearTextField() {
+        JTextField f = new JTextField();
+        Tema.estilizarTextField(f);
+        return f;
     }
 
-    private void showSuccess(String msg) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION, msg, ButtonType.OK);
-        a.setHeaderText("Registro eliminado"); a.setTitle("GameIndex"); a.showAndWait();
+    private JButton crearBoton(String texto, Color bg) {
+        if (bg == Tema.ACCENT)   return Tema.botonPrimario(texto);
+        if (bg == Tema.DANGER)   return Tema.botonDanger(texto);
+        return Tema.botonSecundario(texto);
     }
 }

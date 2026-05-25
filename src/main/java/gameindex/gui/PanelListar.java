@@ -1,216 +1,206 @@
 package gameindex.gui;
 
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.*;
+import gameindex.storage.ArchivoManager;
+import gameindex.tree.BPlusTree;
+import gameindex.model.Videojuego;
 
-/**
- * PanelListar — muestra todos los videojuegos activos del sistema
- * en una tabla con estadísticas de totales, activos y eliminados.
- */
-public class PanelListar extends VBox {
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.table.*;
+import java.awt.*;
+import java.util.List;
 
+public class PanelListar extends JPanel {
+
+    private final ArchivoManager   archivoManager;
+    private final BPlusTree        bPlusTree;
     private final VentanaPrincipal ventana;
 
-    private Label lblTotal, lblActivos, lblEliminados;
-    private TableView<FilaVideojuego> tabla;
+    private DefaultTableModel tableModel;
+    private JLabel            lblConteo;
+    private JTextField        txtFiltro;
 
-    public PanelListar(VentanaPrincipal ventana) {
-        this.ventana = ventana;
-        setSpacing(18);
-        setFillWidth(true);
-        VBox.setVgrow(this, Priority.ALWAYS);
+    private static final String[] COLUMNAS = {"#", "Título", "Desarrollador", "Año", "Género", "Plataformas"};
 
-        getChildren().addAll(
-            buildHeader(),
-            buildStatsRow(),
-            buildTableCard()
-        );
-
-        cargarDatos();
+    public PanelListar(ArchivoManager am, BPlusTree bt, VentanaPrincipal vp) {
+        this.archivoManager = am;
+        this.bPlusTree      = bt;
+        this.ventana        = vp;
+        construirUI();
     }
 
-    // ── Encabezado ───────────────────────────────────────────────
-    private HBox buildHeader() {
-        Label icon  = new Label("☰");
-        icon.setStyle("-fx-font-size:18px; -fx-text-fill:#7c3aed;");
-        Label title = new Label("Catálogo completo");
-        title.getStyleClass().add("panel-title");
-        Label badge = new Label("PanelListar");
-        badge.getStyleClass().add("panel-badge");
+    private void construirUI() {
+        setLayout(new BorderLayout());
+        setBackground(Tema.BG_SURFACE);
+        setBorder(new EmptyBorder(32, 40, 32, 40));
 
-        Button btnRefresh = new Button("↻  Actualizar");
-        btnRefresh.getStyleClass().add("btn-secondary");
-        btnRefresh.setOnAction(e -> cargarDatos());
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        HBox h = new HBox(12, icon, title, badge, spacer, btnRefresh);
-        h.setAlignment(Pos.CENTER_LEFT);
-        return h;
+        add(crearEncabezado(), BorderLayout.NORTH);
+        add(crearTabla(),      BorderLayout.CENTER);
+        add(crearFooter(),     BorderLayout.SOUTH);
     }
 
-    // ── Tarjetas de estadísticas ─────────────────────────────────
-    private HBox buildStatsRow() {
-        lblTotal      = statValue("0", "-fx-text-fill:#a78bfa;");
-        lblActivos    = statValue("0", "-fx-text-fill:#34d399;");
-        lblEliminados = statValue("0", "-fx-text-fill:#f87171;");
+    private JPanel crearEncabezado() {
+        JPanel p = new JPanel(new BorderLayout(16, 0));
+        p.setBackground(Tema.BG_SURFACE);
+        p.setBorder(new EmptyBorder(0, 0, 20, 0));
 
-        HBox row = new HBox(10,
-            statCard("Total registros",  lblTotal),
-            statCard("Activos",          lblActivos),
-            statCard("Eliminados lóg.",  lblEliminados)
-        );
-        row.setFillHeight(true);
-        HBox.setHgrow(row.getChildren().get(0), Priority.ALWAYS);
-        HBox.setHgrow(row.getChildren().get(1), Priority.ALWAYS);
-        HBox.setHgrow(row.getChildren().get(2), Priority.ALWAYS);
-        return row;
+        JPanel textos = new JPanel();
+        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
+        textos.setBackground(Tema.BG_SURFACE);
+
+        JLabel titulo = new JLabel("Todos los Videojuegos");
+        titulo.setFont(Tema.FONT_TITLE);
+        titulo.setForeground(Tema.TEXT_PRIMARY);
+
+        JLabel sub = new JLabel("Registros activos en el sistema");
+        sub.setFont(Tema.FONT_BODY);
+        sub.setForeground(Tema.TEXT_MUTED);
+
+        textos.add(titulo);
+        textos.add(Box.createVerticalStrut(4));
+        textos.add(sub);
+
+        // Barra derecha: filtro + botón refrescar
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acciones.setBackground(Tema.BG_SURFACE);
+
+        txtFiltro = new JTextField(18);
+        Tema.estilizarTextField(txtFiltro);
+        txtFiltro.putClientProperty("JTextField.placeholderText", "Filtrar por título...");
+        txtFiltro.addActionListener(e -> aplicarFiltro());
+
+        JButton btnFiltrar   = crearBoton("Filtrar",   Tema.BG_CARD);
+        JButton btnRefrescar = crearBoton("Refrescar", Tema.ACCENT);
+        btnFiltrar.setForeground(Tema.TEXT_MUTED);
+        btnRefrescar.setForeground(Color.WHITE);
+
+        btnFiltrar.addActionListener(e   -> aplicarFiltro());
+        btnRefrescar.addActionListener(e -> cargarTodos());
+
+        acciones.add(txtFiltro);
+        acciones.add(btnFiltrar);
+        acciones.add(btnRefrescar);
+
+        p.add(textos,   BorderLayout.WEST);
+        p.add(acciones, BorderLayout.EAST);
+        return p;
     }
 
-    private VBox statCard(String label, Label valueLabel) {
-        Label lbl = new Label(label.toUpperCase());
-        lbl.getStyleClass().add("stat-label");
-        VBox card = new VBox(4, lbl, valueLabel);
-        card.getStyleClass().add("stat-card");
-        card.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(card, Priority.ALWAYS);
-        return card;
-    }
-
-    private Label statValue(String val, String style) {
-        Label l = new Label(val);
-        l.getStyleClass().add("stat-value");
-        l.setStyle(l.getStyle() + style);
-        return l;
-    }
-
-    // ── Tabla principal ──────────────────────────────────────────
-    private VBox buildTableCard() {
-        tabla = new TableView<>();
-        tabla.getStyleClass().add("gi-table");
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        tabla.setPlaceholder(placeholder("No hay registros en el sistema."));
-        VBox.setVgrow(tabla, Priority.ALWAYS);
-
-        TableColumn<FilaVideojuego, String> colNum  = col("#",           "numero",      0.5);
-        TableColumn<FilaVideojuego, String> colTit  = col("Título",      "titulo",      3);
-        TableColumn<FilaVideojuego, String> colAnio = col("Año",         "anio",        1);
-        TableColumn<FilaVideojuego, String> colGen  = col("Género",      "genero",      1.5);
-        TableColumn<FilaVideojuego, String> colPlat = col("Plataformas", "plataformas", 2);
-
-        // Columna de acciones
-        TableColumn<FilaVideojuego, Void> colAcc = new TableColumn<>("Acciones");
-        colAcc.setMaxWidth(1f * Integer.MAX_VALUE * 10);
-        colAcc.setCellFactory(tc -> new TableCell<>() {
-            final Button btnEditar   = accionBtn("✎");
-            final Button btnEliminar = accionBtn("🗑");
-            final HBox box = new HBox(4, btnEditar, btnEliminar);
-            {
-                box.setAlignment(Pos.CENTER);
-                btnEditar.setOnAction(e -> {
-                    FilaVideojuego fila = getTableView().getItems().get(getIndex());
-                    // Navegar a PanelActualizar con el título precargado:
-                    // ventana.switchPanel(btnActualizar, new PanelActualizar(ventana, fila.getTitulo()));
-                });
-                btnEliminar.setOnAction(e -> {
-                    FilaVideojuego fila = getTableView().getItems().get(getIndex());
-                    // ventana.getBPlusTree().eliminarLogico(fila.getTitulo(), ventana.getArchivoManager());
-                    // cargarDatos();
-                });
+    private JScrollPane crearTabla() {
+        tableModel = new DefaultTableModel(COLUMNAS, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+            @Override public Class<?> getColumnClass(int c) {
+                return c == 0 || c == 3 ? Integer.class : String.class;
             }
-            @Override protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : box);
+        };
+
+        JTable tabla = new JTable(tableModel);
+        tabla.setFont(Tema.FONT_BODY);
+        tabla.setForeground(Tema.TEXT_PRIMARY);
+        tabla.setBackground(Tema.BG_CARD);
+        tabla.setGridColor(Tema.BORDER);
+        tabla.setSelectionBackground(Tema.ACCENT_DIM);
+        tabla.setSelectionForeground(Tema.TEXT_PRIMARY);
+        tabla.setShowGrid(true);
+        tabla.setIntercellSpacing(new Dimension(1, 1));
+        tabla.setRowHeight(30);
+        tabla.setAutoCreateRowSorter(true); // ordenable por columna
+
+        JTableHeader header = tabla.getTableHeader();
+        header.setFont(Tema.FONT_NAV);
+        header.setBackground(Tema.BG_PANEL);
+        header.setForeground(Tema.TEXT_MUTED);
+        header.setReorderingAllowed(false);
+
+        // Anchos de columna
+        int[] widths = {40, 220, 160, 60, 110, 160};
+        for (int i = 0; i < widths.length; i++)
+            tabla.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+
+        tabla.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object val,
+                                                           boolean sel, boolean focus, int row, int col) {
+                super.getTableCellRendererComponent(t, val, sel, focus, row, col);
+                setForeground(sel ? Tema.TEXT_PRIMARY : Tema.TEXT_PRIMARY);
+                setBackground(sel ? Tema.ACCENT_DIM
+                        : (row % 2 == 0 ? Tema.BG_CARD : Tema.BG_PANEL));
+                setBorder(new EmptyBorder(0, 8, 0, 8));
+                return this;
             }
         });
 
-        tabla.getColumns().addAll(colNum, colTit, colAnio, colGen, colPlat, colAcc);
-
-        VBox card = new VBox(12, tabla);
-        card.getStyleClass().add("card");
-        VBox.setVgrow(card, Priority.ALWAYS);
-        return card;
+        JScrollPane scroll = new JScrollPane(tabla);
+        scroll.setBorder(BorderFactory.createLineBorder(Tema.BORDER));
+        scroll.getViewport().setBackground(Tema.BG_CARD);
+        return scroll;
     }
 
-    // ── Carga de datos ───────────────────────────────────────────
-    private void cargarDatos() {
-        ObservableList<FilaVideojuego> filas = FXCollections.observableArrayList();
+    private JPanel crearFooter() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Tema.BG_SURFACE);
+        p.setBorder(new EmptyBorder(10, 0, 0, 0));
 
-        // ── Integrar backend ─────────────────────────────────────
-        // List<Long> offsets = ventana.getBPlusTree().listarTodos();
-        // int total = offsets.size();
-        // int eliminados = 0;
-        // int idx = 1;
-        // for (long offset : offsets) {
-        //     Videojuego v = ventana.getArchivoManager().leerRegistro(offset);
-        //     if (v.getEliminado() == 1) { eliminados++; continue; }
-        //     filas.add(new FilaVideojuego(String.format("%03d", idx++),
-        //         v.getTitulo(), String.valueOf(v.getAnio()),
-        //         v.getGenero(), v.getPlataformas()));
-        // }
-        // lblTotal.setText(String.valueOf(total));
-        // lblActivos.setText(String.valueOf(filas.size()));
-        // lblEliminados.setText(String.valueOf(eliminados));
+        lblConteo = new JLabel("—");
+        lblConteo.setFont(Tema.FONT_SMALL);
+        lblConteo.setForeground(Tema.TEXT_MUTED);
 
-        // Datos de demostración (eliminar al integrar el backend):
-        filas.addAll(
-            new FilaVideojuego("001", "Elden Ring",    "2022", "Action RPG", "PC, PS5"),
-            new FilaVideojuego("002", "Dark Souls III","2016", "Action RPG", "PC, PS4"),
-            new FilaVideojuego("003", "Disco Elysium", "2019", "RPG",        "PC"),
-            new FilaVideojuego("004", "Celeste",       "2018", "Platformer", "PC, Switch")
-        );
-        lblTotal.setText("248");
-        lblActivos.setText("231");
-        lblEliminados.setText("17");
-
-        tabla.setItems(filas);
-        ventana.setLastOperation("listarTodos()");
+        p.add(lblConteo, BorderLayout.WEST);
+        return p;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────
-    private <T> TableColumn<FilaVideojuego, T> col(String header, String prop, double weight) {
-        TableColumn<FilaVideojuego, T> c = new TableColumn<>(header);
-        c.setCellValueFactory(new PropertyValueFactory<>(prop));
-        c.setMaxWidth(1f * Integer.MAX_VALUE * (weight * 10));
-        return c;
+    public void cargarTodos() {
+        /**
+         tableModel.setRowCount(0);
+         txtFiltro.setText("");
+         try {
+         List<Long> offsets = bPlusTree.listarActivos();
+         int n = 0;
+         for (Long offset : offsets) {
+         Videojuego v = archivoManager.leerRegistro(offset);
+         if (v != null && v.eliminado == 0) {
+         tableModel.addRow(new Object[]{
+         ++n, v.titulo.trim(), v.desarrollador.trim(),
+         v.anio, v.genero.trim(), v.plataformas.trim()
+         });
+         }
+         }
+         lblConteo.setText(n + " registro(s) activo(s)");
+         ventana.setStatusOk("Lista actualizada — " + n + " registro(s)");
+         } catch (Exception ex) {
+         ventana.setStatusError("Error al listar: " + ex.getMessage());
+         }
+         */
     }
 
-    private Button accionBtn(String text) {
-        Button b = new Button(text);
-        b.getStyleClass().add("btn-icon");
-        return b;
+    private void aplicarFiltro() {
+        /**
+         String filtro = txtFiltro.getText().trim().toLowerCase();
+         if (filtro.isEmpty()) { cargarTodos(); return; }
+
+         tableModel.setRowCount(0);
+         try {
+         List<Long> offsets = bPlusTree.listarActivos();
+         int n = 0;
+         for (Long offset : offsets) {
+         Videojuego v = archivoManager.leerRegistro(offset);
+         if (v != null && v.eliminado == 0
+         && v.titulo.toLowerCase().contains(filtro)) {
+         tableModel.addRow(new Object[]{
+         ++n, v.titulo.trim(), v.desarrollador.trim(),
+         v.anio, v.genero.trim(), v.plataformas.trim()
+         });
+         }
+         }
+         lblConteo.setText(n + " resultado(s) para \"" + txtFiltro.getText().trim() + "\"");
+         } catch (Exception ex) {
+         ventana.setStatusError("Error al filtrar: " + ex.getMessage());
+         }
+         */
     }
 
-    private Label placeholder(String text) {
-        Label l = new Label(text);
-        l.setStyle("-fx-text-fill:#3a2e6a; -fx-font-size:12px;");
-        return l;
-    }
-
-    // ── Modelo de fila ───────────────────────────────────────────
-    public static class FilaVideojuego {
-        private final javafx.beans.property.SimpleStringProperty
-            numero, titulo, anio, genero, plataformas;
-
-        public FilaVideojuego(String numero, String titulo, String anio,
-                               String genero, String plataformas) {
-            this.numero      = new javafx.beans.property.SimpleStringProperty(numero);
-            this.titulo      = new javafx.beans.property.SimpleStringProperty(titulo);
-            this.anio        = new javafx.beans.property.SimpleStringProperty(anio);
-            this.genero      = new javafx.beans.property.SimpleStringProperty(genero);
-            this.plataformas = new javafx.beans.property.SimpleStringProperty(plataformas);
-        }
-
-        public String getNumero()      { return numero.get(); }
-        public String getTitulo()      { return titulo.get(); }
-        public String getAnio()        { return anio.get(); }
-        public String getGenero()      { return genero.get(); }
-        public String getPlataformas() { return plataformas.get(); }
+    private JButton crearBoton(String texto, Color bg) {
+        if (bg == Tema.ACCENT) return Tema.botonPrimario(texto);
+        return Tema.botonSecundario(texto);
     }
 }

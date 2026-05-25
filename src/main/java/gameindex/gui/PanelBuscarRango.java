@@ -1,217 +1,214 @@
 package gameindex.gui;
 
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.*;
+import gameindex.storage.ArchivoManager;
+import gameindex.tree.BPlusTree;
+import gameindex.model.Videojuego;
 
-/**
- * PanelBuscarRango — búsqueda por rango alfabético y por prefijo.
- * Aprovecha el encadenamiento de hojas del Árbol B+ para recorrer
- * rangos eficientemente.
- */
-public class PanelBuscarRango extends VBox {
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.table.*;
+import java.awt.*;
+import java.util.List;
 
+public class PanelBuscarRango extends JPanel {
+
+    private final ArchivoManager   archivoManager;
+    private final BPlusTree        bPlusTree;
     private final VentanaPrincipal ventana;
 
-    private TextField tfDesde, tfHasta, tfPrefijo;
-    private Label     lblConteo;
-    private TableView<FilaResultado> tabla;
+    private JTextField txtDesde, txtHasta;
+    private JTextField txtPrefijo;
+    private DefaultTableModel tableModel;
+    private JLabel            lblConteo;
 
-    public PanelBuscarRango(VentanaPrincipal ventana) {
-        this.ventana = ventana;
-        setSpacing(18);
-        setFillWidth(true);
-        VBox.setVgrow(this, Priority.ALWAYS);
+    private static final String[] COLUMNAS = {"Título", "Desarrollador", "Año", "Género", "Plataformas"};
 
-        getChildren().addAll(
-            buildHeader(),
-            buildQueryCard(),
-            buildResultCard()
-        );
+    public PanelBuscarRango(ArchivoManager am, BPlusTree bt, VentanaPrincipal vp) {
+        this.archivoManager = am;
+        this.bPlusTree      = bt;
+        this.ventana        = vp;
+        construirUI();
     }
 
-    // ── Encabezado ───────────────────────────────────────────────
-    private HBox buildHeader() {
-        Label icon  = new Label("≡");
-        icon.setStyle("-fx-font-size:18px; -fx-text-fill:#7c3aed;");
-        Label title = new Label("Búsqueda por rango");
-        title.getStyleClass().add("panel-title");
-        Label badge = new Label("PanelBuscarRango");
-        badge.getStyleClass().add("panel-badge");
-        HBox h = new HBox(12, icon, title, badge);
-        h.setAlignment(Pos.CENTER_LEFT);
-        return h;
+    private void construirUI() {
+        setLayout(new BorderLayout());
+        setBackground(Tema.BG_SURFACE);
+        setBorder(new EmptyBorder(32, 40, 32, 40));
+
+        add(crearEncabezado(), BorderLayout.NORTH);
+        add(crearCuerpo(),     BorderLayout.CENTER);
     }
 
-    // ── Formulario de consulta ───────────────────────────────────
-    private VBox buildQueryCard() {
-        // Rango alfabético
-        tfDesde = inputField("Título inicial  (ej: D)");
-        tfHasta = inputField("Título final  (ej: F)");
+    private JPanel crearEncabezado() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Tema.BG_SURFACE);
+        p.setBorder(new EmptyBorder(0, 0, 24, 0));
 
-        ColumnConstraints col = new ColumnConstraints();
-        col.setPercentWidth(50);
+        JLabel titulo = Tema.label("Buscar por Rango / Prefijo");
+        titulo.setFont(Tema.FONT_TITLE);
 
-        GridPane rangeGrid = new GridPane();
-        rangeGrid.setHgap(12);
-        rangeGrid.getColumnConstraints().addAll(col, col);
-        rangeGrid.add(fieldBox("Desde (título)", tfDesde), 0, 0);
-        rangeGrid.add(fieldBox("Hasta (título)", tfHasta), 1, 0);
+        JLabel sub = Tema.hint("Consultas avanzadas aprovechando el encadenamiento de hojas del Árbol B+");
 
-        // Separador con texto
-        Label orLabel = new Label("— o buscar por prefijo —");
-        orLabel.setStyle("-fx-font-size:10px; -fx-text-fill:#3a2e6a;");
-        HBox orRow = new HBox(orLabel);
-        orRow.setAlignment(Pos.CENTER);
-        VBox.setMargin(orRow, new Insets(4, 0, 4, 0));
+        JPanel texts = new JPanel();
+        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
+        texts.setBackground(Tema.BG_SURFACE);
+        texts.add(titulo);
+        texts.add(Box.createVerticalStrut(4));
+        texts.add(sub);
+        p.add(texts, BorderLayout.WEST);
+        return p;
+    }
 
-        // Prefijo
-        tfPrefijo = inputField("Ej: Dark, Final Fantasy, Zelda…");
+    private JPanel crearCuerpo() {
+        JPanel cuerpo = new JPanel(new BorderLayout(0, 16));
+        cuerpo.setBackground(Tema.BG_SURFACE);
 
-        // Botón
-        Button btnConsultar = new Button("⊞  Consultar");
-        btnConsultar.getStyleClass().add("btn-primary");
-        btnConsultar.setOnAction(e -> consultar());
+        JPanel controles = new JPanel(new GridLayout(1, 2, 16, 0));
+        controles.setBackground(Tema.BG_SURFACE);
+        controles.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
+        controles.add(crearCardRango());
+        controles.add(crearCardPrefijo());
 
-        HBox btnRow = new HBox(btnConsultar);
-        btnRow.setAlignment(Pos.CENTER_RIGHT);
-        VBox.setMargin(btnRow, new Insets(4, 0, 0, 0));
+        cuerpo.add(controles,    BorderLayout.NORTH);
+        cuerpo.add(crearTabla(), BorderLayout.CENTER);
+        return cuerpo;
+    }
 
-        VBox card = new VBox(12,
-            cardTitle("Rango alfabético"),
-            rangeGrid,
-            orRow,
-            fieldBox("Prefijo / franquicia", tfPrefijo),
-            btnRow
-        );
-        card.getStyleClass().add("card");
+    private JPanel crearCardRango() {
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Tema.BG_CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Tema.BORDER),
+                new EmptyBorder(16, 20, 16, 20)
+        ));
+
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets = new Insets(4, 4, 4, 4);
+        gc.fill   = GridBagConstraints.HORIZONTAL;
+
+        JLabel lbl = Tema.label("Rango alfabético");
+        gc.gridx = 0; gc.gridy = 0; gc.gridwidth = 3; gc.weightx = 1;
+        card.add(lbl, gc);
+
+        gc.gridwidth = 1;
+        gc.gridx = 0; gc.gridy = 1; gc.weightx = 0.4;
+        txtDesde = new JTextField(); Tema.estilizarTextField(txtDesde);
+        card.add(Tema.hint("Desde"), gc);
+        gc.gridy = 2; card.add(txtDesde, gc);
+
+        gc.gridx = 1; gc.gridy = 1; gc.weightx = 0;
+        card.add(Tema.hint("—"), gc);
+
+        gc.gridx = 2; gc.gridy = 1; gc.weightx = 0.4;
+        txtHasta = new JTextField(); Tema.estilizarTextField(txtHasta);
+        card.add(Tema.hint("Hasta"), gc);
+        gc.gridy = 2; card.add(txtHasta, gc);
+
+        gc.gridx = 0; gc.gridy = 3; gc.gridwidth = 3; gc.weightx = 1;
+        JButton btn = Tema.botonPrimario("Buscar rango");
+        btn.setPreferredSize(new Dimension(0, 34));
+        btn.addActionListener(e -> buscarRango());
+        card.add(btn, gc);
+
         return card;
     }
 
-    // ── Tabla de resultados ──────────────────────────────────────
-    private VBox buildResultCard() {
-        tabla = new TableView<>();
-        tabla.getStyleClass().add("gi-table");
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        tabla.setPlaceholder(labelPlaceholder("Sin resultados. Realiza una consulta."));
-        VBox.setVgrow(tabla, Priority.ALWAYS);
+    private JPanel crearCardPrefijo() {
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Tema.BG_CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Tema.BORDER),
+                new EmptyBorder(16, 20, 16, 20)
+        ));
 
-        TableColumn<FilaResultado, String> colTitulo = col("Título", "titulo", 3);
-        TableColumn<FilaResultado, String> colAnio   = col("Año",    "anio",   1);
-        TableColumn<FilaResultado, String> colGenero = col("Género", "genero", 1);
-        TableColumn<FilaResultado, String> colPlat   = col("Plataformas", "plataformas", 2);
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets = new Insets(4, 4, 4, 4);
+        gc.fill   = GridBagConstraints.HORIZONTAL;
 
-        tabla.getColumns().addAll(colTitulo, colAnio, colGenero, colPlat);
+        JLabel lbl = Tema.label("Prefijo / Franquicia");
+        gc.gridx = 0; gc.gridy = 0; gc.gridwidth = 2; gc.weightx = 1;
+        card.add(lbl, gc);
 
-        // Encabezado de resultado con conteo
-        lblConteo = new Label("0 coincidencias");
-        lblConteo.setStyle("-fx-font-size:11px; -fx-text-fill:#6b5fa8;");
+        gc.gridy = 1; gc.gridwidth = 2;
+        txtPrefijo = new JTextField(); Tema.estilizarTextField(txtPrefijo);
+        card.add(Tema.hint("Prefijo (ej: \"The Last\", \"Call of\")"), gc);
+        gc.gridy = 2; card.add(txtPrefijo, gc);
 
-        HBox resultHeader = new HBox(cardTitle("Resultados"), new Region(), lblConteo);
-        HBox.setHgrow(resultHeader.getChildren().get(1), Priority.ALWAYS);
-        resultHeader.setAlignment(Pos.CENTER_LEFT);
+        gc.gridy = 3;
+        JButton btn = Tema.botonPrimario("Buscar prefijo");
+        btn.setPreferredSize(new Dimension(0, 34));
+        btn.addActionListener(e -> buscarPrefijo());
+        card.add(btn, gc);
 
-        VBox card = new VBox(12, resultHeader, tabla);
-        card.getStyleClass().add("card");
-        VBox.setVgrow(card, Priority.ALWAYS);
         return card;
     }
 
-    // ── Lógica de consulta ───────────────────────────────────────
-    private void consultar() {
-        ObservableList<FilaResultado> filas = FXCollections.observableArrayList();
+    private JPanel crearTabla() {
+        tableModel = new DefaultTableModel(COLUMNAS, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
 
-        boolean porPrefijo = !tfPrefijo.getText().isBlank();
-        boolean porRango   = !tfDesde.getText().isBlank() || !tfHasta.getText().isBlank();
+        JTable tabla = new JTable(tableModel);
+        tabla.setFont(Tema.FONT_BODY);
+        tabla.setForeground(Tema.TEXT_PRIMARY);
+        tabla.setBackground(Tema.BG_CARD);
+        tabla.setGridColor(Tema.BORDER);
+        tabla.setSelectionBackground(Tema.ACCENT_DIM);
+        tabla.setSelectionForeground(Tema.TEXT_PRIMARY);
+        tabla.setShowGrid(true);
+        tabla.setIntercellSpacing(new Dimension(1, 1));
+        tabla.setRowHeight(28);
+        tabla.getTableHeader().setFont(Tema.FONT_NAV);
+        tabla.getTableHeader().setBackground(Tema.BG_PANEL);
+        tabla.getTableHeader().setForeground(Tema.TEXT_MUTED);
 
-        if (!porPrefijo && !porRango) return;
+        int[] widths = {220, 160, 60, 100, 160};
+        for (int i = 0; i < widths.length; i++)
+            tabla.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
 
-        // ── Integrar aquí el backend ─────────────────────────────
-        // if (porPrefijo) {
-        //     List<Long> offsets = ventana.getBPlusTree().buscarPrefijo(tfPrefijo.getText().trim());
-        //     for (long offset : offsets) {
-        //         Videojuego v = ventana.getArchivoManager().leerRegistro(offset);
-        //         filas.add(new FilaResultado(v.getTitulo(), String.valueOf(v.getAnio()),
-        //                                    v.getGenero(), v.getPlataformas()));
-        //     }
-        // } else {
-        //     List<Long> offsets = ventana.getBPlusTree().buscarRango(
-        //         tfDesde.getText().trim(), tfHasta.getText().trim());
-        //     for (long offset : offsets) {
-        //         Videojuego v = ventana.getArchivoManager().leerRegistro(offset);
-        //         filas.add(new FilaResultado(v.getTitulo(), String.valueOf(v.getAnio()),
-        //                                    v.getGenero(), v.getPlataformas()));
-        //     }
-        // }
+        JScrollPane scroll = new JScrollPane(tabla);
+        scroll.setBorder(BorderFactory.createLineBorder(Tema.BORDER));
+        scroll.getViewport().setBackground(Tema.BG_CARD);
 
-        // Datos de demostración (eliminar al integrar el backend):
-        filas.addAll(
-            new FilaResultado("Dark Souls III",  "2016", "Action RPG", "PC, PS4, Xbox One"),
-            new FilaResultado("Disco Elysium",   "2019", "RPG",        "PC"),
-            new FilaResultado("F-Zero GX",       "2003", "Racing",     "GameCube")
-        );
+        lblConteo = Tema.hint("Sin resultados");
 
-        tabla.setItems(filas);
-        lblConteo.setText(filas.size() + " coincidencia" + (filas.size() == 1 ? "" : "s"));
-        ventana.setLastOperation(porPrefijo
-            ? "buscarPrefijo(\"" + tfPrefijo.getText().trim() + "\")"
-            : "buscarRango(\"" + tfDesde.getText().trim() + "\", \"" + tfHasta.getText().trim() + "\")");
+        JPanel p = new JPanel(new BorderLayout(0, 8));
+        p.setBackground(Tema.BG_SURFACE);
+        p.add(scroll,    BorderLayout.CENTER);
+        p.add(lblConteo, BorderLayout.SOUTH);
+        return p;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────
-    private TextField inputField(String prompt) {
-        TextField tf = new TextField();
-        tf.setPromptText(prompt);
-        tf.getStyleClass().add("gi-input");
-        tf.setMaxWidth(Double.MAX_VALUE);
-        return tf;
+    private void buscarRango() {
+        /**
+         String desde = txtDesde.getText().trim(); String hasta = txtHasta.getText().trim();
+         if (desde.isEmpty() || hasta.isEmpty()) { ventana.setStatusError("Completa ambos campos del rango."); return; }
+         try { List<Long> offsets = bPlusTree.buscarRango(desde, hasta); cargarTabla(offsets); }
+         catch (Exception ex) { ventana.setStatusError("Error en búsqueda por rango: " + ex.getMessage()); }
+         */
     }
 
-    private VBox fieldBox(String lbl, javafx.scene.Node input) {
-        Label label = new Label(lbl);
-        label.getStyleClass().add("field-label");
-        VBox box = new VBox(5, label, input);
-        GridPane.setHgrow(box, Priority.ALWAYS);
-        return box;
+    private void buscarPrefijo() {
+        /**
+         String prefijo = txtPrefijo.getText().trim();
+         if (prefijo.isEmpty()) { ventana.setStatusError("Escribe un prefijo para buscar."); return; }
+         try { List<Long> offsets = bPlusTree.buscarPrefijo(prefijo); cargarTabla(offsets); }
+         catch (Exception ex) { ventana.setStatusError("Error en búsqueda por prefijo: " + ex.getMessage()); }
+         */
     }
 
-    private Label cardTitle(String text) {
-        Label l = new Label(text.toUpperCase());
-        l.getStyleClass().add("card-label");
-        return l;
-    }
-
-    private Label labelPlaceholder(String text) {
-        Label l = new Label(text);
-        l.setStyle("-fx-text-fill:#3a2e6a; -fx-font-size:12px;");
-        return l;
-    }
-
-    private <T> TableColumn<FilaResultado, T> col(String header, String prop, double weight) {
-        TableColumn<FilaResultado, T> c = new TableColumn<>(header);
-        c.setCellValueFactory(new PropertyValueFactory<>(prop));
-        c.setMaxWidth(1f * Integer.MAX_VALUE * (weight * 10));
-        return c;
-    }
-
-    // ── Modelo de fila para la tabla ─────────────────────────────
-    public static class FilaResultado {
-        private final javafx.beans.property.SimpleStringProperty titulo, anio, genero, plataformas;
-
-        public FilaResultado(String titulo, String anio, String genero, String plataformas) {
-            this.titulo      = new javafx.beans.property.SimpleStringProperty(titulo);
-            this.anio        = new javafx.beans.property.SimpleStringProperty(anio);
-            this.genero      = new javafx.beans.property.SimpleStringProperty(genero);
-            this.plataformas = new javafx.beans.property.SimpleStringProperty(plataformas);
+    private void cargarTabla(List<Long> offsets) throws Exception {
+        /**
+        tableModel.setRowCount(0);
+        for (Long offset : offsets) {
+            Videojuego v = archivoManager.leerRegistro(offset);
+            if (v != null && v.eliminado == 0)
+                tableModel.addRow(new Object[]{v.titulo, v.desarrollador, v.anio, v.genero, v.plataformas});
         }
-
-        public String getTitulo()      { return titulo.get(); }
-        public String getAnio()        { return anio.get(); }
-        public String getGenero()      { return genero.get(); }
-        public String getPlataformas() { return plataformas.get(); }
+        int total = tableModel.getRowCount();
+        lblConteo.setText(total == 0 ? "Sin resultados" : total + " resultado(s) encontrado(s)");
+        if (total > 0) ventana.setStatusOk(total + " resultado(s) encontrado(s)");
+        else           ventana.setStatusError("Sin resultados para esa consulta.");
+         */
     }
 }
