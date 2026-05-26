@@ -158,10 +158,10 @@ public class PanelListar extends JPanel {
          int n = 0;
          for (Long offset : offsets) {
          Videojuego v = archivoManager.leerRegistro(offset);
-         if (v != null && v.eliminado == 0) {
+         if (v != null && !v.estaEliminado()) {
          tableModel.addRow(new Object[]{
-         ++n, v.titulo.trim(), v.desarrollador.trim(),
-         v.anio, v.genero.trim(), v.plataformas.trim()
+         ++n, v.getTitulo().trim(), v.getDesarrollador().trim(),
+         v.getAnio(), v.getGenero().trim(), v.getPlataformas().trim()
          });
          }
          }
@@ -175,7 +175,7 @@ public class PanelListar extends JPanel {
 
     private void aplicarFiltro() {
         /**
-         String filtro = txtFiltro.getText().trim().toLowerCase();
+        String filtro = txtFiltro.getText().trim().toLowerCase();
          if (filtro.isEmpty()) { cargarTodos(); return; }
 
          tableModel.setRowCount(0);
@@ -184,11 +184,11 @@ public class PanelListar extends JPanel {
          int n = 0;
          for (Long offset : offsets) {
          Videojuego v = archivoManager.leerRegistro(offset);
-         if (v != null && v.eliminado == 0
-         && v.titulo.toLowerCase().contains(filtro)) {
+         if (v != null && !v.estaEliminado()
+         && v.getTitulo().toLowerCase().contains(filtro)) {
          tableModel.addRow(new Object[]{
-         ++n, v.titulo.trim(), v.desarrollador.trim(),
-         v.anio, v.genero.trim(), v.plataformas.trim()
+         ++n, v.getTitulo().trim(), v.getDesarrollador().trim(),
+         v.getAnio(), v.getGenero().trim(), v.getPlataformas().trim()
          });
          }
          }

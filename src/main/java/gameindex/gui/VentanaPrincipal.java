@@ -37,16 +37,14 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void inicializarBackend() {
-        /**
         try {
             java.io.File dir = new java.io.File("data");
             if (!dir.exists()) dir.mkdirs();
-            archivoManager = new ArchivoManager("data/data.dat");
+            archivoManager = new ArchivoManager();
             bPlusTree      = new BPlusTree(archivoManager);
         } catch (Exception e) {
             mostrarError("No se pudo inicializar:\n" + e.getMessage());
         }
-         */
     }
 
     private void configurarVentana() {
@@ -254,7 +252,6 @@ public class VentanaPrincipal extends JFrame {
     }
 
     public void actualizarConteoRegistros() {
-        /**
         SwingUtilities.invokeLater(() -> {
             try {
                 if (archivoManager != null)
@@ -263,7 +260,6 @@ public class VentanaPrincipal extends JFrame {
                 recordCountLabel.setText("Registros: -");
             }
         });
-         */
     }
 
     public void mostrarError(String msg) {
@@ -271,7 +267,6 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void confirmarCierre() {
-        /**
         int r = JOptionPane.showConfirmDialog(this,
                 "¿Deseas cerrar GameIndex?\nLos datos están guardados en disco.",
                 "Confirmar salida", JOptionPane.YES_NO_OPTION);
@@ -279,7 +274,6 @@ public class VentanaPrincipal extends JFrame {
             try { if (archivoManager != null) archivoManager.cerrar(); } catch (Exception ignored) {}
             dispose(); System.exit(0);
         }
-         */
     }
 
     public ArchivoManager getArchivoManager() { return archivoManager; }

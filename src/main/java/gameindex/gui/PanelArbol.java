@@ -2,7 +2,7 @@ package gameindex.gui;
 
 import gameindex.storage.ArchivoManager;
 import gameindex.tree.BPlusTree;
-import gameindex.tree.NivelNodo;
+import gameindex.tree.NodoBPlus;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -19,8 +19,7 @@ public class PanelArbol extends JPanel {
     private final BPlusTree        bPlusTree;
     private final VentanaPrincipal ventana;
 
-    // Datos del árbol para dibujar
-    private List<NivelNodo> niveles = new ArrayList<>();
+    private List<List<List<String>>> niveles = new ArrayList<>();
 
     private static final int    NODE_H        = 36;   // alto del nodo
     private static final int    KEY_W         = 72;   // ancho por clave
@@ -227,18 +226,34 @@ public class PanelArbol extends JPanel {
     }
 
     public void refrescar() {
-        /**
-         try {
-         niveles = bPlusTree.obtenerNiveles();
-         calcularLayout();
-         canvas.repaint();
-         ventana.setStatusOk("Árbol actualizado — " + niveles.size() + " nivel(es)");
-         } catch (Exception ex) {
-         niveles = new ArrayList<>();
-         canvas.repaint();
-         ventana.setStatusError("Error al cargar el árbol: " + ex.getMessage());
-         }
-         */
+        try {
+            niveles = new ArrayList<>();
+            NodoBPlus raiz = bPlusTree.getRaiz();
+            if (raiz != null) {
+                // BFS por niveles para extraer las claves de cada nodo
+                List<NodoBPlus> nivelActual = new ArrayList<>();
+                nivelActual.add(raiz);
+                while (!nivelActual.isEmpty()) {
+                    List<List<String>> clavesDeNivel = new ArrayList<>();
+                    List<NodoBPlus> siguienteNivel  = new ArrayList<>();
+                    for (NodoBPlus nodo : nivelActual) {
+                        clavesDeNivel.add(new ArrayList<>(nodo.getClaves()));
+                        if (!nodo.esHoja()) {
+                            siguienteNivel.addAll(nodo.getHijos());
+                        }
+                    }
+                    niveles.add(clavesDeNivel);
+                    nivelActual = siguienteNivel;
+                }
+            }
+            calcularLayout();
+            canvas.repaint();
+            ventana.setStatusOk("Árbol actualizado — " + niveles.size() + " nivel(es)");
+        } catch (Exception ex) {
+            niveles = new ArrayList<>();
+            canvas.repaint();
+            ventana.setStatusError("Error al cargar el árbol: " + ex.getMessage());
+        }
     }
 
     private void centrar() {
@@ -249,45 +264,43 @@ public class PanelArbol extends JPanel {
     }
 
     private void calcularLayout() {
-        /**
-         nodeRects.clear();
-         if (niveles == null || niveles.isEmpty()) return;
+        nodeRects.clear();
+        if (niveles == null || niveles.isEmpty()) return;
 
-         int totalLevels = niveles.size();
-         for (int lvl = 0; lvl < totalLevels; lvl++) {
-         NivelNodo nivel = niveles.get(lvl);
-         List<List<String>> nodos = nivel.getNodos();
-         int n = nodos.size();
+        int totalLevels = niveles.size();
+        for (int lvl = 0; lvl < totalLevels; lvl++) {
+            List<List<String>> nodos = niveles.get(lvl);
+            int n = nodos.size();
 
-         // Ancho total de este nivel
-         int totalWidth = 0;
-         List<Integer> nodeWidths = new ArrayList<>();
-         for (List<String> keys : nodos) {
-         int w = Math.max(keys.size(), 1) * KEY_W + 16;
-         nodeWidths.add(w);
-         totalWidth += w + MIN_GAP_X;
-         }
-         totalWidth -= MIN_GAP_X;
+            // Calcular ancho de cada nodo y ancho total del nivel
+            int totalWidth = 0;
+            List<Integer> nodeWidths = new ArrayList<>();
+            for (List<String> keys : nodos) {
+                int w = Math.max(keys.size(), 1) * KEY_W + 16;
+                nodeWidths.add(w);
+                totalWidth += w + MIN_GAP_X;
+            }
+            totalWidth -= MIN_GAP_X;
 
-         int startX = Math.max(40, (1800 - totalWidth) / 2);
-         int y      = lvl * LEVEL_GAP_Y + 10;
-         boolean esHoja = (lvl == totalLevels - 1);
+            int startX = Math.max(40, (1800 - totalWidth) / 2);
+            int y      = lvl * LEVEL_GAP_Y + 10;
+            boolean esHoja = (lvl == totalLevels - 1);
 
-         int cx = startX;
-         for (int i = 0; i < n; i++) {
-         List<String> keys = nodos.get(i);
-         int w = nodeWidths.get(i);
-         Rectangle2D.Double rect = new Rectangle2D.Double(cx, y, w, NODE_H);
+            int cx = startX;
+            for (int i = 0; i < n; i++) {
+                List<String> keys = nodos.get(i);
+                int w = nodeWidths.get(i);
+                Rectangle2D.Double rect = new Rectangle2D.Double(cx, y, w, NODE_H);
 
-         StringBuilder tip = new StringBuilder("<html><b>" + (esHoja ? "Hoja" : "Interno") + "</b><br>");
-         for (String k : keys) tip.append("· ").append(k).append("<br>");
-         tip.append("</html>");
+                StringBuilder tip = new StringBuilder(
+                        "<html><b>" + (esHoja ? "Hoja" : "Interno") + "</b><br>");
+                for (String k : keys) tip.append("· ").append(k).append("<br>");
+                tip.append("</html>");
 
-         nodeRects.add(new NodeRect(rect, keys, esHoja, tip.toString(), lvl, i));
-         cx += w + MIN_GAP_X;
-         }
-         }
-         */
+                nodeRects.add(new NodeRect(rect, keys, esHoja, tip.toString(), lvl, i));
+                cx += w + MIN_GAP_X;
+            }
+        }
     }
 
     private class ArbolCanvas extends JPanel {
@@ -311,7 +324,7 @@ public class PanelArbol extends JPanel {
             g2.translate(panX, panY);
             g2.scale(zoom, zoom);
 
-            if (niveles == null || niveles.isEmpty()) {
+            if (nodeRects.isEmpty()) {
                 dibujarVacio(g2);
             } else {
                 dibujarAristas(g2);
@@ -341,7 +354,6 @@ public class PanelArbol extends JPanel {
             g2.drawString("El árbol está vacío — inserta registros y presiona Refrescar", 60, 80);
         }
 
-        // Líneas padre -> hijo
         private void dibujarAristas(Graphics2D g2) {
             if (niveles.size() < 2) return;
 
@@ -481,7 +493,6 @@ public class PanelArbol extends JPanel {
             }
         }
 
-        // Etiquetas de nivel a la izquierda
         private void dibujarEtiquetasNivel(Graphics2D g2) {
             g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
             g2.setColor(COL_LABEL_LEVEL);
@@ -490,7 +501,7 @@ public class PanelArbol extends JPanel {
             for (int lvl = 0; lvl < totalLevels; lvl++) {
                 int y = lvl * LEVEL_GAP_Y + 10 + NODE_H / 2 + 4;
                 boolean esHoja = (lvl == totalLevels - 1);
-                String  label  = esHoja ? "Hoja  (N" + lvl + ")" : "Nivel " + lvl;
+                String  label  = esHoja ? "Hojas (N" + lvl + ")" : "Nivel " + lvl;
                 g2.drawString(label, 4, y);
             }
         }

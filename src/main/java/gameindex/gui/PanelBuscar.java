@@ -104,7 +104,7 @@ public class PanelBuscar extends JPanel {
          ventana.setStatusError("Sin resultados para: " + titulo);
          } else {
          Videojuego v = archivoManager.leerRegistro(offset);
-         if (v == null || v.eliminado == 1) {
+         if (v == null || v.estaEliminado()) {
          mostrarMensaje("El videojuego fue eliminado del sistema.", Tema.TEXT_MUTED);
          } else {
          mostrarResultado(v);
@@ -138,7 +138,6 @@ public class PanelBuscar extends JPanel {
     }
 
     private void mostrarResultado(Videojuego v) {
-        /**
         panelResultado.removeAll();
 
         JPanel card = new JPanel(new GridBagLayout());
@@ -153,12 +152,12 @@ public class PanelBuscar extends JPanel {
         gc.insets = new Insets(5, 0, 5, 20);
 
         String[][] campos = {
-                {"Título",        v.titulo},
-                {"Desarrollador", v.desarrollador},
-                {"Año",           String.valueOf(v.anio)},
-                {"Plataformas",   v.plataformas},
-                {"Género",        v.genero},
-                {"Sinopsis",      v.sinopsis},
+                {"Título",        v.getTitulo()},
+                {"Desarrollador", v.getDesarrollador()},
+                {"Año",           String.valueOf(v.getAnio())},
+                {"Plataformas",   v.getPlataformas()},
+                {"Género",        v.getGenero()},
+                {"Sinopsis",      v.getSinopsis()},
         };
 
         for (int i = 0; i < campos.length; i++) {
@@ -182,6 +181,5 @@ public class PanelBuscar extends JPanel {
         panelResultado.add(card, BorderLayout.NORTH);
         panelResultado.revalidate();
         panelResultado.repaint();
-         */
     }
 }

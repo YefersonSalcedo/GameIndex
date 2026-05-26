@@ -154,13 +154,13 @@ public class PanelEliminar extends JPanel {
          return;
          }
          Videojuego v = archivoManager.leerRegistro(offset);
-         if (v == null || v.eliminado == 1) {
+         if (v == null || v.estaEliminado()) {
          ventana.setStatusError("El registro ya fue eliminado anteriormente.");
          panelConfirmacion.setVisible(false);
          return;
          }
 
-         tituloEncontrado = v.titulo.trim();
+         tituloEncontrado = v.getTitulo().trim();
          lblInfo.setText("<html>¿Estás seguro de que deseas eliminar <b>"
          + tituloEncontrado + "</b>?<br>"
          + "<span style='color:#8b949e'>Esta acción marcará el registro como eliminado.</span></html>");

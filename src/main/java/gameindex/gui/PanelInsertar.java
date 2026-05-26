@@ -192,7 +192,6 @@ public class PanelInsertar extends JPanel {
     }
 
     private void guardar() {
-        /**
         // Validaciones
         String titulo       = txtTitulo.getText().trim();
         String desarrollador = txtDesarrollador.getText().trim();
@@ -224,7 +223,6 @@ public class PanelInsertar extends JPanel {
 
         try {
             Videojuego v = new Videojuego(titulo, desarrollador, anio, plataformas, genero, sinopsis);
-            long offset  = archivoManager.agregarRegistro(v);
             bPlusTree.insertar(v);
 
             ventana.setStatusOk("Videojuego '" + titulo + "' insertado correctamente.");
@@ -233,7 +231,6 @@ public class PanelInsertar extends JPanel {
         } catch (Exception ex) {
             marcarError("Error al guardar: " + ex.getMessage());
         }
-         */
     }
 
     private void limpiarFormulario() {

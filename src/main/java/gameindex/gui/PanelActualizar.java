@@ -161,40 +161,77 @@ public class PanelActualizar extends JPanel {
     // ── Lógica ─────────────────────────────────────────────────────────────────
     private void cargarRegistro() {
         /**
-         String titulo = txtBusqueda.getText().trim();
-         if (titulo.isEmpty()) return;
-         try {
-         Long offset = bPlusTree.buscar(titulo);
-         if (offset == null) { ventana.setStatusError("No se encontró: " + titulo); panelForm.setVisible(false); return; }
-         Videojuego v = archivoManager.leerRegistro(offset);
-         if (v == null || v.eliminado == 1) { ventana.setStatusError("El registro fue eliminado."); panelForm.setVisible(false); return; }
-         tituloOriginal = v.titulo.trim(); offsetActual = offset;
-         txtTitulo.setText(v.titulo.trim()); txtDesarrollador.setText(v.desarrollador.trim());
-         txtAnio.setText(String.valueOf(v.anio)); txtPlataformas.setText(v.plataformas.trim());
-         txtGenero.setText(v.genero.trim()); txtSinopsis.setText(v.sinopsis.trim());
-         panelForm.setVisible(true);
-         ventana.setStatusOk("Registro cargado: " + tituloOriginal);
-         } catch (Exception ex) { ventana.setStatusError("Error al cargar: " + ex.getMessage()); }
+        String titulo = txtBusqueda.getText().trim();
+        if (titulo.isEmpty()) return;
+        try {
+            Long offset = bPlusTree.buscar(titulo);
+            if (offset == null) {
+                ventana.setStatusError("No se encontró: " + titulo);
+                panelForm.setVisible(false);
+                return;
+            }
+            Videojuego v = archivoManager.leerRegistro(offset);
+            if (v == null || v.estaEliminado()) {
+                ventana.setStatusError("El registro fue eliminado.");
+                panelForm.setVisible(false);
+                return;
+            }
+            tituloOriginal = v.getTitulo().trim();
+            offsetActual   = offset;
+            txtTitulo       .setText(v.getTitulo().trim());
+            txtDesarrollador.setText(v.getDesarrollador().trim());
+            txtAnio         .setText(String.valueOf(v.getAnio()));
+            txtPlataformas  .setText(v.getPlataformas().trim());
+            txtGenero       .setText(v.getGenero().trim());
+            txtSinopsis     .setText(v.getSinopsis().trim());
+            panelForm.setVisible(true);
+            ventana.setStatusOk("Registro cargado: " + tituloOriginal);
+        } catch (Exception ex) {
+            ventana.setStatusError("Error al cargar: " + ex.getMessage());
+        }
          */
     }
 
     private void actualizar() {
-        /**
-         String nuevoTitulo = txtTitulo.getText().trim(); String desarrollador = txtDesarrollador.getText().trim();
-         String anioStr = txtAnio.getText().trim(); String plataformas = txtPlataformas.getText().trim();
-         String genero = txtGenero.getText().trim(); String sinopsis = txtSinopsis.getText().trim();
-         if (nuevoTitulo.isEmpty() || desarrollador.isEmpty() || anioStr.isEmpty() || plataformas.isEmpty() || genero.isEmpty() || sinopsis.isEmpty()) {
-         ventana.setStatusError("Todos los campos son obligatorios."); return;
-         }
-         int anio; try { anio = Integer.parseInt(anioStr); } catch (NumberFormatException ex) { ventana.setStatusError("El año debe ser un número válido."); return; }
-         int confirm = JOptionPane.showConfirmDialog(ventana, "¿Confirmas la actualización de \"" + tituloOriginal + "\"?", "Confirmar actualización", JOptionPane.YES_NO_OPTION);
-         if (confirm != JOptionPane.YES_OPTION) return;
-         try {
-         Videojuego v = new Videojuego(nuevoTitulo, desarrollador, anio, plataformas, genero, sinopsis);
-         archivoManager.escribirRegistro(v, offsetActual); bPlusTree.actualizar(tituloOriginal, nuevoTitulo, offsetActual);
-         ventana.setStatusOk("\"" + tituloOriginal + "\" actualizado correctamente."); cancelar();
-         } catch (Exception ex) { ventana.setStatusError("Error al actualizar: " + ex.getMessage()); }
-         */
+        String nuevoTitulo   = txtTitulo.getText().trim();
+        String desarrollador = txtDesarrollador.getText().trim();
+        String anioStr       = txtAnio.getText().trim();
+        String plataformas   = txtPlataformas.getText().trim();
+        String genero        = txtGenero.getText().trim();
+        String sinopsis      = txtSinopsis.getText().trim();
+
+        if (nuevoTitulo.isEmpty() || desarrollador.isEmpty() || anioStr.isEmpty()
+                || plataformas.isEmpty() || genero.isEmpty() || sinopsis.isEmpty()) {
+            ventana.setStatusError("Todos los campos son obligatorios.");
+            return;
+        }
+        int anio;
+        try {
+            anio = Integer.parseInt(anioStr);
+        } catch (NumberFormatException ex) {
+            ventana.setStatusError("El año debe ser un número válido.");
+            return;
+        }
+        int confirm = JOptionPane.showConfirmDialog(
+                ventana,
+                "¿Confirmas la actualización de \"" + tituloOriginal + "\"?",
+                "Confirmar actualización",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        try {
+            Videojuego v = new Videojuego(nuevoTitulo, desarrollador, anio,
+                    plataformas, genero, sinopsis);
+            boolean ok = bPlusTree.actualizar(tituloOriginal, v);
+            if (ok) {
+                ventana.setStatusOk("\"" + tituloOriginal + "\" actualizado correctamente.");
+                cancelar();
+            } else {
+                ventana.setStatusError("No se pudo actualizar: registro no encontrado.");
+            }
+        } catch (Exception ex) {
+            ventana.setStatusError("Error al actualizar: " + ex.getMessage());
+        }
     }
 
     private void cancelar() {

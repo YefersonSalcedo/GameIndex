@@ -202,8 +202,8 @@ public class PanelBuscarRango extends JPanel {
         tableModel.setRowCount(0);
         for (Long offset : offsets) {
             Videojuego v = archivoManager.leerRegistro(offset);
-            if (v != null && v.eliminado == 0)
-                tableModel.addRow(new Object[]{v.titulo, v.desarrollador, v.anio, v.genero, v.plataformas});
+            if (v != null && !v.estaEliminado())
+                tableModel.addRow(new Object[]{v.getTitulo(), v.getDesarrollador(), v.getAnio(), v.getGenero(), v.getSinopsis()});
         }
         int total = tableModel.getRowCount();
         lblConteo.setText(total == 0 ? "Sin resultados" : total + " resultado(s) encontrado(s)");
