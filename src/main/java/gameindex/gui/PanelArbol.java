@@ -40,7 +40,7 @@ public class PanelArbol extends JPanel {
     private void construirUI() {
         setLayout(new BorderLayout());
         setBackground(Tema.BG_SURFACE);
-        setBorder(new EmptyBorder(32, 40, 32, 40));
+        setBorder(new EmptyBorder(36, 48, 36, 48));
 
         add(crearEncabezado(), BorderLayout.NORTH);
         add(crearAreaNiveles(), BorderLayout.CENTER);
@@ -57,11 +57,11 @@ public class PanelArbol extends JPanel {
         textos.setBackground(Tema.BG_SURFACE);
 
         JLabel titulo = new JLabel("Niveles del Árbol B+");
-        titulo.setFont(Tema.FONT_TITLE);
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 28));
         titulo.setForeground(Tema.TEXT_PRIMARY);
 
         JLabel sub = new JLabel("Cada nivel muestra sus nodos con las claves que contienen");
-        sub.setFont(Tema.FONT_SMALL);
+        sub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         sub.setForeground(Tema.TEXT_MUTED);
 
         textos.add(titulo);
@@ -105,11 +105,11 @@ public class PanelArbol extends JPanel {
                 g.fillRoundRect(0, 3, 12, 12, 4, 4);
             }
         };
-        dot.setPreferredSize(new Dimension(14, 18));
+        dot.setPreferredSize(new Dimension(16, 22));
         dot.setBackground(Tema.BG_SURFACE);
 
         JLabel lbl = new JLabel(texto);
-        lbl.setFont(Tema.FONT_SMALL);
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lbl.setForeground(Tema.TEXT_MUTED);
 
         p.add(dot);
@@ -122,7 +122,7 @@ public class PanelArbol extends JPanel {
         panelNiveles = new JPanel();
         panelNiveles.setLayout(new BoxLayout(panelNiveles, BoxLayout.Y_AXIS));
         panelNiveles.setBackground(COL_BG_CANVAS);
-        panelNiveles.setBorder(new EmptyBorder(24, 24, 24, 24));
+        panelNiveles.setBorder(new EmptyBorder(32, 32, 32, 32));
 
         JScrollPane scroll = new JScrollPane(panelNiveles);
         scroll.setBorder(BorderFactory.createLineBorder(Tema.BORDER));
@@ -172,7 +172,7 @@ public class PanelArbol extends JPanel {
 
         if (niveles.isEmpty()) {
             JLabel vacio = new JLabel("El árbol está vacío — inserta registros y presiona Refrescar");
-            vacio.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+            vacio.setFont(new Font("Segoe UI", Font.ITALIC, 16));
             vacio.setForeground(Tema.TEXT_MUTED);
             vacio.setAlignmentX(Component.LEFT_ALIGNMENT);
             panelNiveles.add(Box.createVerticalStrut(40));
@@ -194,15 +194,15 @@ public class PanelArbol extends JPanel {
                     : "Nivel " + lvl + "  —  Internos  (" + nodos.size() + " nodo" + (nodos.size() != 1 ? "s" : "") + ")";
 
             JLabel lblNivel = new JLabel(etiqueta);
-            lblNivel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            lblNivel.setFont(new Font("Segoe UI", Font.BOLD, 15));
             lblNivel.setForeground(esHoja ? COL_LEAF_BD : COL_INTERNAL_BD);
             lblNivel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            lblNivel.setBorder(new EmptyBorder(0, 0, 8, 0));
+            lblNivel.setBorder(new EmptyBorder(0, 0, 10, 0));
 
             panelNiveles.add(lblNivel);
 
             // Fila de nodos
-            JPanel filaPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+            JPanel filaPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 6));
             filaPanel.setBackground(COL_BG_CANVAS);
             filaPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -215,14 +215,14 @@ public class PanelArbol extends JPanel {
 
             // Separador entre niveles (excepto el último)
             if (lvl < totalNiveles - 1) {
-                panelNiveles.add(Box.createVerticalStrut(6));
+                panelNiveles.add(Box.createVerticalStrut(12));
                 JSeparator sep = new JSeparator(JSeparator.HORIZONTAL);
                 sep.setForeground(new Color(40, 50, 65));
                 sep.setBackground(new Color(40, 50, 65));
                 sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
                 sep.setAlignmentX(Component.LEFT_ALIGNMENT);
                 panelNiveles.add(sep);
-                panelNiveles.add(Box.createVerticalStrut(10));
+                panelNiveles.add(Box.createVerticalStrut(16));
             }
         }
 
@@ -241,33 +241,33 @@ public class PanelArbol extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 // Fondo
                 g2.setColor(bgColor);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
                 // Borde
                 g2.setColor(bdColor);
-                g2.setStroke(new BasicStroke(1.5f));
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                g2.setStroke(new BasicStroke(1.8f));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
                 g2.dispose();
             }
         };
         tarjeta.setOpaque(false);
         tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
-        tarjeta.setBorder(new EmptyBorder(8, 12, 8, 12));
+        tarjeta.setBorder(new EmptyBorder(12, 16, 12, 16));
 
         // Encabezado pequeño: "Nodo N"
         JLabel lblIdx = new JLabel((esHoja ? "Hoja" : "Nodo") + " " + indice);
-        lblIdx.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        lblIdx.setForeground(new Color(bdColor.getRed(), bdColor.getGreen(), bdColor.getBlue(), 180));
+        lblIdx.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblIdx.setForeground(new Color(bdColor.getRed(), bdColor.getGreen(), bdColor.getBlue(), 200));
         lblIdx.setAlignmentX(Component.CENTER_ALIGNMENT);
         tarjeta.add(lblIdx);
-        tarjeta.add(Box.createVerticalStrut(4));
+        tarjeta.add(Box.createVerticalStrut(6));
 
         // Claves: una fila de chips
-        JPanel chipsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
+        JPanel chipsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
         chipsPanel.setOpaque(false);
 
         if (claves.isEmpty()) {
             JLabel vacio = new JLabel("vacío");
-            vacio.setFont(new Font("Consolas", Font.ITALIC, 11));
+            vacio.setFont(new Font("Consolas", Font.ITALIC, 13));
             vacio.setForeground(Tema.TEXT_MUTED);
             chipsPanel.add(vacio);
         } else {
@@ -279,9 +279,9 @@ public class PanelArbol extends JPanel {
         tarjeta.add(chipsPanel);
 
         // Tamaño mínimo para que se vea bien aunque haya pocas claves
-        int anchoMin = Math.max(claves.size() * 64 + 24, 80);
-        tarjeta.setPreferredSize(new Dimension(anchoMin, 58));
-        tarjeta.setMaximumSize(new Dimension(anchoMin, 58));
+        int anchoMin = Math.max(claves.size() * 80 + 32, 100);
+        tarjeta.setPreferredSize(new Dimension(anchoMin, 72));
+        tarjeta.setMaximumSize(new Dimension(anchoMin, 72));
 
         return tarjeta;
     }
@@ -292,18 +292,18 @@ public class PanelArbol extends JPanel {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(bdColor.getRed(), bdColor.getGreen(), bdColor.getBlue(), 30));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 5, 5);
+                g2.setColor(new Color(bdColor.getRed(), bdColor.getGreen(), bdColor.getBlue(), 35));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
                 g2.dispose();
                 super.paintComponent(g);
             }
         };
-        lbl.setFont(new Font("Consolas", Font.BOLD, 12));
+        lbl.setFont(new Font("Consolas", Font.BOLD, 14));
         lbl.setForeground(COL_KEY_TEXT);
         lbl.setOpaque(false);
-        lbl.setBorder(new EmptyBorder(2, 6, 2, 6));
-        lbl.setPreferredSize(new Dimension(58, 22));
-        lbl.setToolTipText(clave); // clave completa en tooltip
+        lbl.setBorder(new EmptyBorder(3, 8, 3, 8));
+        lbl.setPreferredSize(new Dimension(70, 26));
+        lbl.setToolTipText(clave);
         return lbl;
     }
 

@@ -209,9 +209,9 @@ public class PanelInsertar extends JPanel {
         int anio;
         try {
             anio = Integer.parseInt(anioStr);
-            if (anio < 1970 || anio > 2100) throw new NumberFormatException();
+            if (anio < 1950 || anio > 2030) throw new NumberFormatException();
         } catch (NumberFormatException ex) {
-            marcarError("El año debe ser un número entre 1970 y 2100.");
+            marcarError("El año debe ser un número entre 1950 y 2030.");
             return;
         }
 

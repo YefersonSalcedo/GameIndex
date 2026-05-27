@@ -198,17 +198,15 @@ public class PanelBuscarRango extends JPanel {
     }
 
     private void cargarTabla(List<Long> offsets) throws Exception {
-        /**
         tableModel.setRowCount(0);
         for (Long offset : offsets) {
             Videojuego v = archivoManager.leerRegistro(offset);
             if (v != null && !v.estaEliminado())
-                tableModel.addRow(new Object[]{v.getTitulo(), v.getDesarrollador(), v.getAnio(), v.getGenero(), v.getSinopsis()});
+                tableModel.addRow(new Object[]{v.getTitulo(), v.getDesarrollador(), v.getAnio(), v.getGenero(), v.getPlataformas()});
         }
         int total = tableModel.getRowCount();
         lblConteo.setText(total == 0 ? "Sin resultados" : total + " resultado(s) encontrado(s)");
         if (total > 0) ventana.setStatusOk(total + " resultado(s) encontrado(s)");
         else           ventana.setStatusError("Sin resultados para esa consulta.");
-         */
     }
 }

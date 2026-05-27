@@ -151,7 +151,7 @@ public class PanelListar extends JPanel {
 
     public void cargarTodos() {
         /**
-         tableModel.setRowCount(0);
+        tableModel.setRowCount(0);
          txtFiltro.setText("");
          try {
          List<Long> offsets = bPlusTree.listarActivos();

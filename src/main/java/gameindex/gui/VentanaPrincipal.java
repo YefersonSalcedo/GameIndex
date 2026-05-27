@@ -166,7 +166,7 @@ public class VentanaPrincipal extends JFrame {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 10));
         p.setBackground(Tema.BG_PANEL);
         p.setMaximumSize(new Dimension(230, 38));
-        JLabel lbl = new JLabel("Estructuras de Datos y Laboratorio");
+        JLabel lbl = new JLabel("Estructuras de Datos");
         lbl.setFont(Tema.FONT_SMALL);
         lbl.setForeground(Tema.TEXT_SUBTLE);
         p.add(lbl);
@@ -252,14 +252,16 @@ public class VentanaPrincipal extends JFrame {
     }
 
     public void actualizarConteoRegistros() {
+        /**
         SwingUtilities.invokeLater(() -> {
             try {
                 if (archivoManager != null)
-                    recordCountLabel.setText("Registros: " + archivoManager.getTotalRegistros());
+                    recordCountLabel.setText("Registros: " + bPlusTree.listarActivos().size());
             } catch (Exception ex) {
                 recordCountLabel.setText("Registros: -");
             }
         });
+         */
     }
 
     public void mostrarError(String msg) {

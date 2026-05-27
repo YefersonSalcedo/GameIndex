@@ -42,26 +42,26 @@ public final class Tema {
     public static final Color GRAD_END    = new Color(167, 139, 250); // violet-400
 
     // FUENTES
-    public static final Font FONT_TITLE  = new Font("Segoe UI", Font.BOLD,  22);
-    public static final Font FONT_NAV    = new Font("Segoe UI", Font.BOLD,  13);
-    public static final Font FONT_BODY   = new Font("Segoe UI", Font.PLAIN, 13);
-    public static final Font FONT_SMALL  = new Font("Segoe UI", Font.PLAIN, 11);
-    public static final Font FONT_MONO   = new Font("Consolas",  Font.PLAIN, 12);
-    public static final Font FONT_LABEL  = new Font("Segoe UI", Font.BOLD,  12);
+    public static final Font FONT_TITLE  = new Font("Segoe UI", Font.BOLD,  28);
+    public static final Font FONT_NAV    = new Font("Segoe UI", Font.BOLD,  14);
+    public static final Font FONT_BODY   = new Font("Segoe UI", Font.PLAIN, 14);
+    public static final Font FONT_SMALL  = new Font("Segoe UI", Font.PLAIN, 15);
+    public static final Font FONT_MONO   = new Font("Consolas",  Font.PLAIN, 14);
+    public static final Font FONT_LABEL  = new Font("Segoe UI", Font.BOLD,  13);
 
     // UTILIDADES DE ESTILO
 
     public static javax.swing.border.Border bordeCard() {
         return javax.swing.BorderFactory.createCompoundBorder(
                 javax.swing.BorderFactory.createLineBorder(BORDER, 1),
-                new javax.swing.border.EmptyBorder(24, 28, 24, 28)
+                new javax.swing.border.EmptyBorder(28, 32, 28, 32)
         );
     }
 
     public static javax.swing.border.Border bordeInput() {
         return javax.swing.BorderFactory.createCompoundBorder(
                 javax.swing.BorderFactory.createLineBorder(BORDER, 1),
-                new javax.swing.border.EmptyBorder(8, 11, 8, 11)
+                new javax.swing.border.EmptyBorder(10, 13, 10, 13)
         );
     }
 
@@ -78,7 +78,7 @@ public final class Tema {
         ta.setBackground(BG_INPUT);
         ta.setForeground(TEXT_PRIMARY);
         ta.setCaretColor(ACCENT);
-        ta.setBorder(new javax.swing.border.EmptyBorder(8, 11, 8, 11));
+        ta.setBorder(new javax.swing.border.EmptyBorder(10, 13, 10, 13));
         ta.setLineWrap(true);
         ta.setWrapStyleWord(true);
     }
@@ -110,7 +110,7 @@ public final class Tema {
         b.setBorder(javax.swing.BorderFactory.createLineBorder(BORDER, 1));
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setPreferredSize(new Dimension(110, 38));
+        b.setPreferredSize(new Dimension(120, 42));
         return b;
     }
 
@@ -122,7 +122,7 @@ public final class Tema {
         b.setBorderPainted(false);
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setPreferredSize(new Dimension(140, 38));
+        b.setPreferredSize(new Dimension(150, 42));
         return b;
     }
 
@@ -135,7 +135,7 @@ public final class Tema {
             setBorderPainted(false);
             setFocusPainted(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setPreferredSize(new Dimension(180, 38));
+            setPreferredSize(new Dimension(190, 42));
         }
 
         @Override
@@ -179,16 +179,28 @@ public final class Tema {
         javax.swing.UIManager.put("TableHeader.foreground",        TEXT_MUTED);
         javax.swing.UIManager.put("OptionPane.background",         BG_CARD);
         javax.swing.UIManager.put("OptionPane.messageForeground",  TEXT_PRIMARY);
-        javax.swing.UIManager.put("Button.arc",                    10);
-        javax.swing.UIManager.put("Component.arc",                 8);
-        javax.swing.UIManager.put("TextComponent.arc",             6);
+        javax.swing.UIManager.put("Button.arc",                    12);
+        javax.swing.UIManager.put("Component.arc",                 10);
+        javax.swing.UIManager.put("TextComponent.arc",             8);
         javax.swing.UIManager.put("ScrollBar.showButtons",         false);
         javax.swing.UIManager.put("ScrollBar.thumbArc",            999);
         javax.swing.UIManager.put("ScrollBar.thumb",               BORDER_FOCUS);
         javax.swing.UIManager.put("ScrollBar.track",               BG_PANEL);
-        javax.swing.UIManager.put("Table.rowHeight",               28);
+        javax.swing.UIManager.put("Table.rowHeight",               34);
         javax.swing.UIManager.put("TabbedPane.showTabSeparators",  false);
         javax.swing.UIManager.put("Component.focusColor",          ACCENT);
         javax.swing.UIManager.put("Component.borderColor",         BORDER);
+        // Fuente global
+        javax.swing.UIManager.put("defaultFont",                   FONT_BODY);
+        javax.swing.UIManager.put("Label.font",                    FONT_BODY);
+        javax.swing.UIManager.put("Button.font",                   FONT_NAV);
+        javax.swing.UIManager.put("TextField.font",                FONT_BODY);
+        javax.swing.UIManager.put("TextArea.font",                 FONT_BODY);
+        javax.swing.UIManager.put("Table.font",                    FONT_BODY);
+        javax.swing.UIManager.put("TableHeader.font",              FONT_LABEL);
+        javax.swing.UIManager.put("ComboBox.font",                 FONT_BODY);
+        javax.swing.UIManager.put("List.font",                     FONT_BODY);
+        javax.swing.UIManager.put("MenuItem.font",                 FONT_BODY);
+        javax.swing.UIManager.put("Menu.font",                     FONT_BODY);
     }
 }
