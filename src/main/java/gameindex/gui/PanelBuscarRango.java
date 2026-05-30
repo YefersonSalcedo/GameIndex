@@ -180,12 +180,12 @@ public class PanelBuscarRango extends JPanel {
     }
 
     private void buscarRango() {
-        /**
+        
          String desde = txtDesde.getText().trim(); String hasta = txtHasta.getText().trim();
          if (desde.isEmpty() || hasta.isEmpty()) { ventana.setStatusError("Completa ambos campos del rango."); return; }
          try { List<Long> offsets = bPlusTree.buscarRango(desde, hasta); cargarTabla(offsets); }
          catch (Exception ex) { ventana.setStatusError("Error en búsqueda por rango: " + ex.getMessage()); }
-         */
+         
     }
 
     private void buscarPrefijo() {

@@ -46,6 +46,313 @@ public class BPlusTree {
         indiceManager.guardarArbol(raiz);
     }
 
+    // === Búsqueda exacta ====================================================
+
+    /**
+     * Busca un videojuego por título exacto y devuelve el offset del registro
+     * en el archivo de datos. Si el título no existe, o el registro ya está
+     * marcado como eliminado lógicamente, devuelve null.
+     *
+     * @param titulo título a buscar
+     * @return offset del registro, o null si no se encuentra
+     */
+    public Long buscar(String titulo) {
+        if (titulo == null) {
+            return null;
+        }
+
+        String clave = titulo.trim();
+        if (clave.isEmpty() || raiz == null || raiz.getNumClaves() == 0) {
+            return null;
+        }
+
+        NodoBPlus hoja = buscarHoja(raiz, clave);
+        if (hoja == null) {
+            return null;
+        }
+
+        for (int i = 0; i < hoja.getNumClaves(); i++) {
+            if (clave.equals(hoja.getClave(i))) {
+                long offset = hoja.getOffset(i);
+                Videojuego videojuego = archivoManager.leerRegistro(offset);
+                if (videojuego != null && !videojuego.estaEliminado()) {
+                    return offset;
+                }
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    // === Eliminación lógica ================================================
+
+    /**
+     * Marca lógicamente como eliminado el videojuego identificado por título.
+     * No borra el registro físicamente ni modifica la estructura del árbol.
+     *
+     * @param titulo título del videojuego a eliminar
+     * @return true si se encontró y se marcó como eliminado; false en caso contrario
+     */
+    public boolean eliminarLogico(String titulo) {
+        if (titulo == null) {
+            return false;
+        }
+
+        Long offset = buscar(titulo);
+        if (offset == null) {
+            return false;
+        }
+
+        Videojuego videojuego = archivoManager.leerRegistro(offset);
+        if (videojuego == null || videojuego.estaEliminado()) {
+            return false;
+        }
+
+        videojuego.marcarEliminado();
+        archivoManager.escribirRegistro(videojuego, offset);
+        return true;
+    }
+
+    /**
+     * Desciende por el árbol hasta llegar a la hoja que debería contener la
+     * clave indicada, respetando el orden actual del árbol.
+     */
+    private NodoBPlus buscarHoja(NodoBPlus nodo, String clave) {
+        NodoBPlus actual = nodo;
+        while (actual != null && !actual.esHoja()) {
+            int posHijo = actual.buscarPosicionHijo(clave);
+            actual = actual.getHijo(posHijo);
+        }
+        return actual;
+    }
+
+    /**
+     * Desciende por el hijo más a la izquierda hasta alcanzar la primera hoja
+     * del árbol.
+     */
+    private NodoBPlus buscarHojaMasIzquierda() {
+        NodoBPlus actual = raiz;
+        while (actual != null && !actual.esHoja()) {
+            if (actual.getHijos().isEmpty()) {
+                return null;
+            }
+            actual = actual.getHijo(0);
+        }
+        return actual;
+    }
+
+    // === Búsqueda por rango ================================================
+
+    /**
+     * Busca títulos dentro del rango alfabético [inicio, fin] y devuelve los
+     * offsets de los registros activos, en el mismo orden del árbol.
+     *
+     * @param inicio límite inferior del rango
+     * @param fin    límite superior del rango
+     * @return lista de offsets ordenados por título
+     */
+    public List<Long> buscarRango(String inicio, String fin) {
+        List<Long> resultados = new java.util.ArrayList<>();
+
+        if (inicio == null || fin == null || raiz == null || raiz.getNumClaves() == 0) {
+            return resultados;
+        }
+
+        String desde = inicio.trim();
+        String hasta = fin.trim();
+        if (desde.isEmpty() || hasta.isEmpty()) {
+            return resultados;
+        }
+
+        if (desde.compareTo(hasta) > 0) {
+            String temporal = desde;
+            desde = hasta;
+            hasta = temporal;
+        }
+
+        NodoBPlus hoja = buscarHoja(raiz, desde);
+        if (hoja == null) {
+            return resultados;
+        }
+
+        NodoBPlus actual = hoja;
+        int posicion = actual.buscarPosicionInsercion(desde);
+
+        while (actual != null) {
+            for (int i = posicion; i < actual.getNumClaves(); i++) {
+                String clave = actual.getClave(i);
+                if (clave.compareTo(hasta) > 0) {
+                    return resultados;
+                }
+                if (clave.compareTo(desde) >= 0) {
+                    long offset = actual.getOffset(i);
+                    Videojuego videojuego = archivoManager.leerRegistro(offset);
+                    if (videojuego != null && !videojuego.estaEliminado()) {
+                        resultados.add(offset);
+                    }
+                }
+            }
+
+            actual = actual.getSiguienteHoja();
+            posicion = 0;
+        }
+
+        return resultados;
+    }
+
+    // === Búsqueda por prefijo ==============================================
+
+    /**
+     * Busca títulos que comienzan con el prefijo indicado y devuelve los
+     * offsets de los registros activos, en orden alfabético.
+     *
+     * @param prefijo texto inicial a buscar
+     * @return lista de offsets ordenados por título
+     */
+    public List<Long> buscarPrefijo(String prefijo) {
+        List<Long> resultados = new java.util.ArrayList<>();
+
+        if (prefijo == null || raiz == null || raiz.getNumClaves() == 0) {
+            return resultados;
+        }
+
+        String pref = prefijo.trim();
+        if (pref.isEmpty()) {
+            return resultados;
+        }
+
+        NodoBPlus hoja = buscarHoja(raiz, pref);
+        if (hoja == null) {
+            return resultados;
+        }
+
+        NodoBPlus actual = hoja;
+        int posicion = actual.buscarPosicionInsercion(pref);
+
+        while (actual != null) {
+            for (int i = posicion; i < actual.getNumClaves(); i++) {
+                String clave = actual.getClave(i);
+                if (!clave.startsWith(pref)) {
+                    return resultados;
+                }
+
+                long offset = actual.getOffset(i);
+                Videojuego videojuego = archivoManager.leerRegistro(offset);
+                if (videojuego != null && !videojuego.estaEliminado()) {
+                    resultados.add(offset);
+                }
+            }
+
+            actual = actual.getSiguienteHoja();
+            posicion = 0;
+        }
+
+        return resultados;
+    }
+
+    // === Listado de activos ================================================
+
+    /**
+     * Recorre todas las hojas del árbol en orden y devuelve los offsets de los
+     * registros activos, omitiendo los eliminados lógicamente.
+     *
+     * @return lista de offsets de videojuegos activos
+     */
+    public List<Long> listarActivos() {
+        List<Long> resultados = new java.util.ArrayList<>();
+
+        if (raiz == null || raiz.getNumClaves() == 0) {
+            return resultados;
+        }
+
+        NodoBPlus actual = buscarHojaMasIzquierda();
+        while (actual != null) {
+            for (int i = 0; i < actual.getNumClaves(); i++) {
+                long offset = actual.getOffset(i);
+                Videojuego videojuego = archivoManager.leerRegistro(offset);
+                if (videojuego != null && !videojuego.estaEliminado()) {
+                    resultados.add(offset);
+                }
+            }
+            actual = actual.getSiguienteHoja();
+        }
+
+        return resultados;
+    }
+
+    // === Depuración por niveles ============================================
+
+    /**
+     * Organiza el árbol por niveles usando BFS y devuelve una representación
+     * textual de cada nodo. Cada entrada contiene el tipo del nodo, sus claves
+     * y la cantidad de hijos (si aplica).
+     *
+     * @return niveles del árbol, donde cada nivel contiene la descripción de
+     *         los nodos en ese nivel
+     */
+    public List<List<String>> obtenerNiveles() {
+        List<List<String>> niveles = new java.util.ArrayList<>();
+
+        if (raiz == null || raiz.getNumClaves() == 0) {
+            return niveles;
+        }
+
+        java.util.Queue<NodoBPlus> cola = new java.util.ArrayDeque<>();
+        cola.add(raiz);
+
+        while (!cola.isEmpty()) {
+            int cantidadEnNivel = cola.size();
+            List<String> nivel = new java.util.ArrayList<>();
+
+            for (int i = 0; i < cantidadEnNivel; i++) {
+                NodoBPlus nodo = cola.poll();
+                if (nodo == null) {
+                    continue;
+                }
+
+                nivel.add(describirNodo(nodo));
+                if (!nodo.esHoja()) {
+                    cola.addAll(nodo.getHijos());
+                }
+            }
+
+            niveles.add(nivel);
+        }
+
+        return niveles;
+    }
+
+    /**
+     * Imprime por consola el árbol organizado por niveles, útil para depurar
+     * la estructura sin alterar datos ni persistencia.
+     */
+    public void imprimirPorNiveles() {
+        List<List<String>> niveles = obtenerNiveles();
+
+        if (niveles.isEmpty()) {
+            System.out.println("[BPlusTree] Árbol vacío");
+            return;
+        }
+
+        for (int i = 0; i < niveles.size(); i++) {
+            System.out.println("Nivel " + i + ":");
+            List<String> nivel = niveles.get(i);
+            for (String nodo : nivel) {
+                System.out.println("  " + nodo);
+            }
+        }
+    }
+
+    /**
+     * Construye una descripción legible de un nodo para depuración.
+     */
+    private String describirNodo(NodoBPlus nodo) {
+        String tipo = nodo.esHoja() ? NivelNodo.HOJA.name() : NivelNodo.INTERNO.name();
+        int hijos = nodo.esHoja() ? 0 : nodo.getHijos().size();
+        return tipo + " | claves=" + nodo.getClaves() + " | hijos=" + hijos;
+    }
+
     // === Inserción ===========================================================
 
     /**
