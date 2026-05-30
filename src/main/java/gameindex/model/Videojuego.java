@@ -5,12 +5,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 
 public class Videojuego {
 
-    // ── Longitudes máximas de cada campo (en caracteres) ──────────────────
+    // === Longitudes máximas de cada campo (en caracteres) =================
     public static final int LEN_TITULO        = 100;
     public static final int LEN_DESARROLLADOR =  80;
     public static final int LEN_PLATAFORMAS   = 120;
@@ -30,7 +29,7 @@ public class Videojuego {
 
     private String  titulo;
     private String  desarrollador;
-    private int     anio;
+    private int año;
     private String  plataformas;
     private String  genero;
     private String  sinopsis;
@@ -40,11 +39,11 @@ public class Videojuego {
    
 
     /** Constructor completo. */
-    public Videojuego(String titulo, String desarrollador, int anio,
+    public Videojuego(String titulo, String desarrollador, int año,
                       String plataformas, String genero, String sinopsis) {
         this.titulo        = titulo;
         this.desarrollador = desarrollador;
-        this.anio          = anio;
+        this.año = año;
         this.plataformas   = plataformas;
         this.genero        = genero;
         this.sinopsis      = sinopsis;
@@ -55,7 +54,7 @@ public class Videojuego {
     public Videojuego() {
         this.titulo        = "";
         this.desarrollador = "";
-        this.anio          = 0;
+        this.año = 0;
         this.plataformas   = "";
         this.genero        = "";
         this.sinopsis      = "";
@@ -69,7 +68,7 @@ public class Videojuego {
         try {
             escribirStringFijo(dos, titulo,        LEN_TITULO);
             escribirStringFijo(dos, desarrollador, LEN_DESARROLLADOR);
-            dos.writeInt(anio);
+            dos.writeInt(año);
             escribirStringFijo(dos, plataformas,   LEN_PLATAFORMAS);
             escribirStringFijo(dos, genero,         LEN_GENERO);
             escribirStringFijo(dos, sinopsis,       LEN_SINOPSIS);
@@ -88,7 +87,7 @@ public class Videojuego {
         try {
             v.titulo        = leerStringFijo(dis, LEN_TITULO).trim();
             v.desarrollador = leerStringFijo(dis, LEN_DESARROLLADOR).trim();
-            v.anio          = dis.readInt();
+            v.año = dis.readInt();
             v.plataformas   = leerStringFijo(dis, LEN_PLATAFORMAS).trim();
             v.genero        = leerStringFijo(dis, LEN_GENERO).trim();
             v.sinopsis      = leerStringFijo(dis, LEN_SINOPSIS).trim();
@@ -133,8 +132,8 @@ public class Videojuego {
     public String getDesarrollador()                         { return desarrollador; }
     public void   setDesarrollador(String desarrollador)     { this.desarrollador = desarrollador; }
 
-    public int  getAnio()          { return anio; }
-    public void setAnio(int anio)  { this.anio = anio; }
+    public int getAño()          { return año; }
+    public void setAño(int año)  { this.año = año; }
 
     public String getPlataformas()                       { return plataformas; }
     public void   setPlataformas(String plataformas)     { this.plataformas = plataformas; }
@@ -163,7 +162,7 @@ public class Videojuego {
         return "Videojuego{" +
                 "titulo='"        + titulo        + '\'' +
                 ", desarrollador='" + desarrollador + '\'' +
-                ", anio="         + anio           +
+                ", anio="         + año +
                 ", plataformas='" + plataformas   + '\'' +
                 ", genero='"      + genero         + '\'' +
                 ", sinopsis='"    + sinopsis       + '\'' +

@@ -15,22 +15,21 @@ public class IndiceManager {
 
     private static final String RUTA = "data/index.dat";
 
-    // Longitud máxima de una clave (igual que Videojuego.LEN_TITULO)
+    // Longitud máxima de una clave
     private static final int KEY_CHARS = 100;
 
-    // Tamaño en bytes de cada nodo serializado
+    // Tamaño en bytes de cada nodo serializado:
     // 1 (tipo) + 4 (numClaves)
     // + ORDEN * KEY_CHARS * 2      (claves en UTF-16)
     // + ORDEN * 8                  (offsets de datos, hojas)
     // + (ORDEN+1) * 8              (offsets de hijos, internos)
     // + 8                          (siguienteHoja)
-    private static final int ORDEN      = NodoBPlus.ORDEN;
-    public  static final int NODE_SIZE  =
-            1 + 4
-                    + ORDEN       * KEY_CHARS * 2
-                    + ORDEN       * 8
-                    + (ORDEN + 1) * 8
-                    + 8;
+    private static final int ORDEN     = NodoBPlus.ORDEN;
+    public  static final int NODE_SIZE = 1 + 4
+                                        + ORDEN       * KEY_CHARS * 2
+                                        + ORDEN       * 8
+                                        + (ORDEN + 1) * 8
+                                        + 8;
 
     // Offset del encabezado (donde guardamos el offset de la raíz)
     private static final long HEADER_OFFSET_RAIZ = 0L;
@@ -111,10 +110,9 @@ public class IndiceManager {
             long offsetRaiz = raf.readLong();
             if (offsetRaiz == -1L) return null;
 
-            // Leer todos los nodos del archivo en un mapa offset → nodo
-            Map<Long, NodoBPlus> nodosLeidos    = new HashMap<>();
-            // También guardamos los offsets de hijos/siguienteHoja para reconectar
-            Map<Long, long[]>    hijoOffsets    = new HashMap<>();
+            // Leer todos los nodos del archivo en un mapa offset --> nodo
+            Map<Long, NodoBPlus> nodosLeidos      = new HashMap<>();
+            Map<Long, long[]>    hijoOffsets      = new HashMap<>();
             Map<Long, Long>      siguienteOffsets = new HashMap<>();
 
             long pos = HEADER_SIZE;
@@ -123,7 +121,7 @@ public class IndiceManager {
                 pos += NODE_SIZE;
             }
 
-            // Reconectar hijos
+            // Reconectar hijos de nodos internos
             for (Map.Entry<Long, long[]> entry : hijoOffsets.entrySet()) {
                 NodoBPlus nodo = nodosLeidos.get(entry.getKey());
                 for (long hOffset : entry.getValue()) {
@@ -134,9 +132,10 @@ public class IndiceManager {
                 }
             }
 
-            // Reconectar cadena de hojas
+            // Solo reconectar siguienteHoja en nodos HOJA.
             for (Map.Entry<Long, Long> entry : siguienteOffsets.entrySet()) {
                 NodoBPlus nodo = nodosLeidos.get(entry.getKey());
+                if (nodo == null || !nodo.esHoja()) continue;
                 long sigOffset = entry.getValue();
                 if (sigOffset != -1L) {
                     NodoBPlus sig = nodosLeidos.get(sigOffset);
@@ -151,6 +150,7 @@ public class IndiceManager {
         }
     }
 
+    /** Cierra el archivo de índice.*/
     public void cerrar() {
         if (raf != null) {
             try { raf.close(); } catch (IOException ignored) {}
@@ -203,9 +203,9 @@ public class IndiceManager {
     }
 
     private void leerNodo(long offset,
-                          Map<Long, NodoBPlus>  nodosLeidos,
-                          Map<Long, long[]>     hijoOffsets,
-                          Map<Long, Long>       siguienteOffsets) throws IOException {
+                          Map<Long, NodoBPlus> nodosLeidos,
+                          Map<Long, long[]>    hijoOffsets,
+                          Map<Long, Long>      siguienteOffsets) throws IOException {
         raf.seek(offset);
 
         int tipo = raf.readByte();
@@ -253,7 +253,7 @@ public class IndiceManager {
     private void escribirStringFijo(String valor, int longitud) throws IOException {
         String s = (valor == null) ? "" : valor;
         if (s.length() > longitud) s = s.substring(0, longitud);
-        for (int i = 0; i < s.length(); i++)      raf.writeChar(s.charAt(i));
+        for (int i = 0; i < s.length(); i++)       raf.writeChar(s.charAt(i));
         for (int i = s.length(); i < longitud; i++) raf.writeChar(' ');
     }
 
