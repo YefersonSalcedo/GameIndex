@@ -95,7 +95,18 @@ public class PanelActualizar extends JPanel {
         cuerpo.add(barra);
         cuerpo.add(Box.createVerticalStrut(16));
         cuerpo.add(panelForm);
-        return cuerpo;
+
+        // Envolver en scroll para que el formulario nunca tape los botones
+        JScrollPane scroll = new JScrollPane(cuerpo,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(Tema.BG_SURFACE);
+        wrapper.add(scroll, BorderLayout.CENTER);
+        return wrapper;
     }
 
     private JPanel crearFormulario() {
@@ -105,7 +116,7 @@ public class PanelActualizar extends JPanel {
                 BorderFactory.createLineBorder(Tema.BORDER),
                 new EmptyBorder(24, 28, 24, 28)
         ));
-        form.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        // Sin setMaximumSize: el scroll del cuerpo controla el desborde
 
         GridBagConstraints gc = new GridBagConstraints();
         gc.insets  = new Insets(6, 0, 6, 12);
@@ -134,7 +145,7 @@ public class PanelActualizar extends JPanel {
         gc.gridx = 0; gc.gridy = row;     gc.weightx = 0; gc.gridwidth = 1;
         form.add(Tema.label("Sinopsis"), gc);
         gc.gridy = row + 1; gc.weightx = 1; gc.gridwidth = 2;
-        gc.fill  = GridBagConstraints.BOTH; gc.weighty = 1;
+        gc.fill  = GridBagConstraints.HORIZONTAL; gc.weighty = 0;
         JScrollPane sinScroll = new JScrollPane(txtSinopsis);
         sinScroll.setBorder(BorderFactory.createLineBorder(Tema.BORDER));
         form.add(sinScroll, gc);
@@ -160,7 +171,7 @@ public class PanelActualizar extends JPanel {
 
     // ── Lógica ─────────────────────────────────────────────────────────────────
     private void cargarRegistro() {
-        
+
         String titulo = txtBusqueda.getText().trim();
         if (titulo.isEmpty()) return;
         try {
@@ -180,7 +191,7 @@ public class PanelActualizar extends JPanel {
             offsetActual   = offset;
             txtTitulo       .setText(v.getTitulo().trim());
             txtDesarrollador.setText(v.getDesarrollador().trim());
-            txtAnio         .setText(String.valueOf(v.getAnio()));
+            txtAnio         .setText(String.valueOf(v.getAño()));
             txtPlataformas  .setText(v.getPlataformas().trim());
             txtGenero       .setText(v.getGenero().trim());
             txtSinopsis     .setText(v.getSinopsis().trim());
@@ -189,7 +200,7 @@ public class PanelActualizar extends JPanel {
         } catch (Exception ex) {
             ventana.setStatusError("Error al cargar: " + ex.getMessage());
         }
-         
+
     }
 
     private void actualizar() {

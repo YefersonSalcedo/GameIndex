@@ -10,19 +10,19 @@ import javax.swing.table.*;
 import java.awt.*;
 import java.util.List;
 
-public class PanelBuscarRango extends JPanel {
+public class PanelBuscarPrefijo extends JPanel {
 
     private final ArchivoManager   archivoManager;
     private final BPlusTree        bPlusTree;
     private final VentanaPrincipal ventana;
 
-    private JTextField     txtDesde, txtHasta;
+    private JTextField        txtPrefijo;
     private DefaultTableModel tableModel;
     private JLabel            lblConteo;
 
     private static final String[] COLUMNAS = {"Título", "Desarrollador", "Año", "Género", "Plataformas"};
 
-    public PanelBuscarRango(ArchivoManager am, BPlusTree bt, VentanaPrincipal vp) {
+    public PanelBuscarPrefijo(ArchivoManager am, BPlusTree bt, VentanaPrincipal vp) {
         this.archivoManager = am;
         this.bPlusTree      = bt;
         this.ventana        = vp;
@@ -43,10 +43,10 @@ public class PanelBuscarRango extends JPanel {
         p.setBackground(Tema.BG_SURFACE);
         p.setBorder(new EmptyBorder(0, 0, 24, 0));
 
-        JLabel titulo = Tema.label("Buscar por Rango Alfabético");
+        JLabel titulo = Tema.label("Buscar por Prefijo / Franquicia");
         titulo.setFont(Tema.FONT_TITLE);
 
-        JLabel sub = Tema.hint("Consulta títulos dentro de un rango aprovechando el encadenamiento de hojas del Árbol B+");
+        JLabel sub = Tema.hint("Encuentra todos los títulos que comienzan con un texto dado, ideal para buscar franquicias completas");
 
         JPanel texts = new JPanel();
         texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
@@ -61,12 +61,12 @@ public class PanelBuscarRango extends JPanel {
     private JPanel crearCuerpo() {
         JPanel cuerpo = new JPanel(new BorderLayout(0, 16));
         cuerpo.setBackground(Tema.BG_SURFACE);
-        cuerpo.add(crearCardRango(), BorderLayout.NORTH);
-        cuerpo.add(crearTabla(),     BorderLayout.CENTER);
+        cuerpo.add(crearCardPrefijo(), BorderLayout.NORTH);
+        cuerpo.add(crearTabla(),       BorderLayout.CENTER);
         return cuerpo;
     }
 
-    private JPanel crearCardRango() {
+    private JPanel crearCardPrefijo() {
         JPanel card = new JPanel(new GridBagLayout());
         card.setBackground(Tema.BG_CARD);
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -78,28 +78,21 @@ public class PanelBuscarRango extends JPanel {
         gc.insets = new Insets(4, 4, 4, 4);
         gc.fill   = GridBagConstraints.HORIZONTAL;
 
-        JLabel lbl = Tema.label("Rango alfabético");
-        gc.gridx = 0; gc.gridy = 0; gc.gridwidth = 3; gc.weightx = 1;
+        JLabel lbl = Tema.label("Prefijo / Franquicia");
+        gc.gridx = 0; gc.gridy = 0; gc.gridwidth = 2; gc.weightx = 1;
         card.add(lbl, gc);
 
-        gc.gridwidth = 1;
-        gc.gridx = 0; gc.gridy = 1; gc.weightx = 0.4;
-        txtDesde = new JTextField(); Tema.estilizarTextField(txtDesde);
-        card.add(Tema.hint("Desde"), gc);
-        gc.gridy = 2; card.add(txtDesde, gc);
+        gc.gridy = 1;
+        card.add(Tema.hint("Prefijo (ej: \"Super Mario\", \"The Legend of Zelda\")"), gc);
 
-        gc.gridx = 1; gc.gridy = 1; gc.weightx = 0;
-        card.add(Tema.hint("—"), gc);
+        gc.gridy = 2;
+        txtPrefijo = new JTextField(); Tema.estilizarTextField(txtPrefijo);
+        card.add(txtPrefijo, gc);
 
-        gc.gridx = 2; gc.gridy = 1; gc.weightx = 0.4;
-        txtHasta = new JTextField(); Tema.estilizarTextField(txtHasta);
-        card.add(Tema.hint("Hasta"), gc);
-        gc.gridy = 2; card.add(txtHasta, gc);
-
-        gc.gridx = 0; gc.gridy = 3; gc.gridwidth = 3; gc.weightx = 1;
-        JButton btn = Tema.botonPrimario("Buscar rango");
+        gc.gridy = 3;
+        JButton btn = Tema.botonPrimario("Buscar prefijo");
         btn.setPreferredSize(new Dimension(0, 34));
-        btn.addActionListener(e -> buscarRango());
+        btn.addActionListener(e -> buscarPrefijo());
         card.add(btn, gc);
 
         return card;
@@ -141,18 +134,17 @@ public class PanelBuscarRango extends JPanel {
         return p;
     }
 
-    private void buscarRango() {
-        String desde = txtDesde.getText().trim();
-        String hasta = txtHasta.getText().trim();
-        if (desde.isEmpty() || hasta.isEmpty()) {
-            ventana.setStatusError("Completa ambos campos del rango.");
+    private void buscarPrefijo() {
+        String prefijo = txtPrefijo.getText().trim();
+        if (prefijo.isEmpty()) {
+            ventana.setStatusError("Escribe un prefijo para buscar.");
             return;
         }
         try {
-            List<Long> offsets = bPlusTree.buscarRango(desde, hasta);
+            List<Long> offsets = bPlusTree.buscarPrefijo(prefijo);
             cargarTabla(offsets);
         } catch (Exception ex) {
-            ventana.setStatusError("Error en búsqueda por rango: " + ex.getMessage());
+            ventana.setStatusError("Error en búsqueda por prefijo: " + ex.getMessage());
         }
     }
 

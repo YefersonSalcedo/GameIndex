@@ -1,5 +1,6 @@
 package gameindex.gui;
 
+import gameindex.model.Videojuego;
 import gameindex.storage.ArchivoManager;
 import gameindex.tree.BPlusTree;
 import gameindex.tree.NodoBPlus;
@@ -7,9 +8,10 @@ import gameindex.tree.NodoBPlus;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
-import java.awt.event.*;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class PanelArbol extends JPanel {
 
@@ -17,15 +19,16 @@ public class PanelArbol extends JPanel {
     private final BPlusTree        bPlusTree;
     private final VentanaPrincipal ventana;
 
-    private List<List<List<String>>> niveles = new ArrayList<>();
+    private List<List<List<String>>> niveles          = new ArrayList<>();
+    private Set<String>              clavesEliminadas = new HashSet<>();
 
     // Colores
-    private static final Color COL_INTERNAL_BG  = new Color(30,  45,  70);
-    private static final Color COL_INTERNAL_BD  = new Color(88, 166, 255);
-    private static final Color COL_LEAF_BG      = new Color(20,  50,  35);
-    private static final Color COL_LEAF_BD      = new Color(63, 185,  80);
-    private static final Color COL_KEY_TEXT     = new Color(230, 237, 243);
-    private static final Color COL_BG_CANVAS    = new Color(13,  17,  23);
+    private static final Color COL_INTERNAL_BG = new Color(30,  45,  70);
+    private static final Color COL_INTERNAL_BD = new Color(88, 166, 255);
+    private static final Color COL_LEAF_BG     = new Color(20,  50,  35);
+    private static final Color COL_LEAF_BD     = new Color(63, 185,  80);
+    private static final Color COL_KEY_TEXT    = new Color(230, 237, 243);
+    private static final Color COL_BG_CANVAS  = new Color(13,  17,  23);
 
     // Panel donde se muestran los niveles en texto
     private JPanel panelNiveles;
@@ -46,7 +49,8 @@ public class PanelArbol extends JPanel {
         add(crearAreaNiveles(), BorderLayout.CENTER);
     }
 
-    // Encabezado
+    // === Encabezado ==========================================================
+
     private JPanel crearEncabezado() {
         JPanel p = new JPanel(new BorderLayout(16, 0));
         p.setBackground(Tema.BG_SURFACE);
@@ -117,7 +121,8 @@ public class PanelArbol extends JPanel {
         return p;
     }
 
-    // Área de niveles
+    // === Área de niveles =====================================================
+
     private JScrollPane crearAreaNiveles() {
         panelNiveles = new JPanel();
         panelNiveles.setLayout(new BoxLayout(panelNiveles, BoxLayout.Y_AXIS));
@@ -129,21 +134,48 @@ public class PanelArbol extends JPanel {
         scroll.getViewport().setBackground(COL_BG_CANVAS);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        scroll.getVerticalScrollBar().setUnitIncrement(20);
+        scroll.getHorizontalScrollBar().setUnitIncrement(20);
+
         return scroll;
     }
 
-    // Refrescar
+    // === Refrescar ===========================================================
+
     public void refrescar() {
         try {
-            niveles = new ArrayList<>();
+            niveles          = new ArrayList<>();
+            clavesEliminadas = new HashSet<>();
+
             NodoBPlus raiz = bPlusTree.getRaiz();
             boolean arbolConDatos = raiz != null && !raiz.getClaves().isEmpty();
+
             if (arbolConDatos) {
+                // Recorrer hojas para detectar claves eliminadas lógicamente.
+                // CORRECCIÓN: se reemplazó archivoManager.estaEliminado(offset)
+                // (método eliminado de ArchivoManager) por leer el registro
+                // directamente y llamar v.estaEliminado(), igual que el resto
+                // del proyecto.
+                NodoBPlus cursor = bPlusTree.getPrimeraHoja();
+                while (cursor != null) {
+                    List<String> claves  = cursor.getClaves();
+                    List<Long>   offsets = cursor.getOffsets();
+                    for (int i = 0; i < claves.size(); i++) {
+                        Videojuego v = archivoManager.leerRegistro(offsets.get(i));
+                        if (v != null && v.estaEliminado()) {
+                            clavesEliminadas.add(claves.get(i));
+                        }
+                    }
+                    cursor = cursor.getSiguienteHoja();
+                }
+
+                // Construir niveles por BFS
                 List<NodoBPlus> nivelActual = new ArrayList<>();
                 nivelActual.add(raiz);
                 while (!nivelActual.isEmpty()) {
-                    List<List<String>> clavesDeNivel = new ArrayList<>();
-                    List<NodoBPlus> siguienteNivel   = new ArrayList<>();
+                    List<List<String>> clavesDeNivel  = new ArrayList<>();
+                    List<NodoBPlus>    siguienteNivel = new ArrayList<>();
                     for (NodoBPlus nodo : nivelActual) {
                         clavesDeNivel.add(new ArrayList<>(nodo.getClaves()));
                         if (!nodo.esHoja()) {
@@ -154,10 +186,11 @@ public class PanelArbol extends JPanel {
                     nivelActual = siguienteNivel;
                 }
             }
+
             renderizarNiveles();
             String msg = niveles.isEmpty()
                     ? "El árbol está vacío"
-                    : "Árbol actualizado - " + niveles.size() + " nivel(es)";
+                    : "Árbol actualizado — " + niveles.size() + " nivel(es)";
             ventana.setStatusOk(msg);
         } catch (Exception ex) {
             niveles = new ArrayList<>();
@@ -166,7 +199,8 @@ public class PanelArbol extends JPanel {
         }
     }
 
-    // Renderizar niveles como texto
+    // === Renderizado =========================================================
+
     private void renderizarNiveles() {
         panelNiveles.removeAll();
 
@@ -185,20 +219,19 @@ public class PanelArbol extends JPanel {
         int totalNiveles = niveles.size();
 
         for (int lvl = 0; lvl < totalNiveles; lvl++) {
-            boolean esHoja = (lvl == totalNiveles - 1);
-            List<List<String>> nodos = niveles.get(lvl);
+            boolean            esHoja = (lvl == totalNiveles - 1);
+            List<List<String>> nodos  = niveles.get(lvl);
 
             // Etiqueta del nivel
-            String etiqueta = esHoja
-                    ? "Nivel " + lvl + "  —  Hojas  (" + nodos.size() + " nodo" + (nodos.size() != 1 ? "s" : "") + ")"
-                    : "Nivel " + lvl + "  —  Internos  (" + nodos.size() + " nodo" + (nodos.size() != 1 ? "s" : "") + ")";
+            String plural  = nodos.size() != 1 ? "s" : "";
+            String tipo    = esHoja ? "Hojas" : "Internos";
+            String etiqueta = "Nivel " + lvl + "  —  " + tipo + "  (" + nodos.size() + " nodo" + plural + ")";
 
             JLabel lblNivel = new JLabel(etiqueta);
             lblNivel.setFont(new Font("Segoe UI", Font.BOLD, 15));
             lblNivel.setForeground(esHoja ? COL_LEAF_BD : COL_INTERNAL_BD);
             lblNivel.setAlignmentX(Component.LEFT_ALIGNMENT);
             lblNivel.setBorder(new EmptyBorder(0, 0, 10, 0));
-
             panelNiveles.add(lblNivel);
 
             // Fila de nodos
@@ -207,8 +240,7 @@ public class PanelArbol extends JPanel {
             filaPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             for (int i = 0; i < nodos.size(); i++) {
-                List<String> claves = nodos.get(i);
-                filaPanel.add(crearTarjetaNodo(claves, esHoja, i));
+                filaPanel.add(crearTarjetaNodo(nodos.get(i), esHoja, i));
             }
 
             panelNiveles.add(filaPanel);
@@ -232,17 +264,15 @@ public class PanelArbol extends JPanel {
     }
 
     private JPanel crearTarjetaNodo(List<String> claves, boolean esHoja, int indice) {
-        Color bgColor = esHoja ? COL_LEAF_BG     : COL_INTERNAL_BG;
-        Color bdColor = esHoja ? COL_LEAF_BD      : COL_INTERNAL_BD;
+        Color bgColor = esHoja ? COL_LEAF_BG : COL_INTERNAL_BG;
+        Color bdColor = esHoja ? COL_LEAF_BD : COL_INTERNAL_BD;
 
         JPanel tarjeta = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                // Fondo
                 g2.setColor(bgColor);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-                // Borde
                 g2.setColor(bdColor);
                 g2.setStroke(new BasicStroke(1.8f));
                 g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
@@ -253,7 +283,7 @@ public class PanelArbol extends JPanel {
         tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
         tarjeta.setBorder(new EmptyBorder(12, 16, 12, 16));
 
-        // Encabezado pequeño: "Nodo N"
+        // Encabezado pequeño: "Hoja N" / "Nodo N"
         JLabel lblIdx = new JLabel((esHoja ? "Hoja" : "Nodo") + " " + indice);
         lblIdx.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblIdx.setForeground(new Color(bdColor.getRed(), bdColor.getGreen(), bdColor.getBlue(), 200));
@@ -261,7 +291,7 @@ public class PanelArbol extends JPanel {
         tarjeta.add(lblIdx);
         tarjeta.add(Box.createVerticalStrut(6));
 
-        // Claves: una fila de chips
+        // Chips de claves
         JPanel chipsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
         chipsPanel.setOpaque(false);
 
@@ -272,39 +302,50 @@ public class PanelArbol extends JPanel {
             chipsPanel.add(vacio);
         } else {
             for (String clave : claves) {
-                chipsPanel.add(crearChipClave(clave, bdColor));
+                chipsPanel.add(crearChipClave(clave, bdColor, clavesEliminadas.contains(clave)));
             }
         }
 
         tarjeta.add(chipsPanel);
 
-        // Tamaño mínimo para que se vea bien aunque haya pocas claves
-        int anchoMin = Math.max(claves.size() * 80 + 32, 100);
+        int anchoMin = Math.max(claves.size() * 155 + 32, 180);
         tarjeta.setPreferredSize(new Dimension(anchoMin, 72));
         tarjeta.setMaximumSize(new Dimension(anchoMin, 72));
 
         return tarjeta;
     }
 
-    private JLabel crearChipClave(String clave, Color bdColor) {
-        String display = clave.length() > 10 ? clave.substring(0, 9) + "…" : clave;
+    private JLabel crearChipClave(String clave, Color bdColor, boolean eliminada) {
+        String display = clave.length() > 18 ? clave.substring(0, 17) + "…" : clave;
+
         JLabel lbl = new JLabel(display, SwingConstants.CENTER) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(bdColor.getRed(), bdColor.getGreen(), bdColor.getBlue(), 35));
+                Color fondoChip = eliminada
+                        ? new Color(80, 20, 20, 120)
+                        : new Color(bdColor.getRed(), bdColor.getGreen(), bdColor.getBlue(), 35);
+                g2.setColor(fondoChip);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+                if (eliminada) {
+                    g2.setColor(new Color(220, 80, 80, 180));
+                    g2.setStroke(new BasicStroke(1.5f));
+                    int midY = getHeight() / 2;
+                    g2.drawLine(8, midY, getWidth() - 8, midY);
+                }
                 g2.dispose();
                 super.paintComponent(g);
             }
         };
+
         lbl.setFont(new Font("Consolas", Font.BOLD, 14));
-        lbl.setForeground(COL_KEY_TEXT);
+        lbl.setForeground(eliminada ? new Color(180, 100, 100) : COL_KEY_TEXT);
         lbl.setOpaque(false);
         lbl.setBorder(new EmptyBorder(3, 8, 3, 8));
-        lbl.setPreferredSize(new Dimension(70, 26));
-        lbl.setToolTipText(clave);
+        lbl.setPreferredSize(new Dimension(140, 26));
+        lbl.setToolTipText(eliminada
+                ? clave + "  [eliminado lógicamente — clave preservada en el índice]"
+                : clave);
         return lbl;
     }
-
 }

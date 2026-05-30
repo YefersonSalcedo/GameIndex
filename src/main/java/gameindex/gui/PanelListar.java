@@ -18,9 +18,8 @@ public class PanelListar extends JPanel {
 
     private DefaultTableModel tableModel;
     private JLabel            lblConteo;
-    private JTextField        txtFiltro;
 
-    private static final String[] COLUMNAS = {"#", "Título", "Desarrollador", "Año", "Género", "Plataformas"};
+    private static final String[] COLUMNAS = {"#", "Título", "Desarrollador", "Año", "Plataformas"};
 
     public PanelListar(ArchivoManager am, BPlusTree bt, VentanaPrincipal vp) {
         this.archivoManager = am;
@@ -44,41 +43,29 @@ public class PanelListar extends JPanel {
         p.setBackground(Tema.BG_SURFACE);
         p.setBorder(new EmptyBorder(0, 0, 20, 0));
 
-        JPanel textos = new JPanel();
-        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
-        textos.setBackground(Tema.BG_SURFACE);
-
+        // Textos
         JLabel titulo = new JLabel("Todos los Videojuegos");
         titulo.setFont(Tema.FONT_TITLE);
         titulo.setForeground(Tema.TEXT_PRIMARY);
 
-        JLabel sub = new JLabel("Registros activos en el sistema");
+        JLabel sub = new JLabel("Registros activos en el sistema, ordenados alfabéticamente");
         sub.setFont(Tema.FONT_BODY);
         sub.setForeground(Tema.TEXT_MUTED);
 
+        JPanel textos = new JPanel();
+        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
+        textos.setBackground(Tema.BG_SURFACE);
         textos.add(titulo);
         textos.add(Box.createVerticalStrut(4));
         textos.add(sub);
 
-        // Barra derecha: filtro + botón refrescar
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        acciones.setBackground(Tema.BG_SURFACE);
-
-        txtFiltro = new JTextField(18);
-        Tema.estilizarTextField(txtFiltro);
-        txtFiltro.putClientProperty("JTextField.placeholderText", "Filtrar por título...");
-        txtFiltro.addActionListener(e -> aplicarFiltro());
-
-        JButton btnFiltrar   = crearBoton("Filtrar",   Tema.BG_CARD);
-        JButton btnRefrescar = crearBoton("Refrescar", Tema.ACCENT);
-        btnFiltrar.setForeground(Tema.TEXT_MUTED);
+        // Botón refrescar
+        JButton btnRefrescar = Tema.botonPrimario("Refrescar");
         btnRefrescar.setForeground(Color.WHITE);
-
-        btnFiltrar.addActionListener(e   -> aplicarFiltro());
         btnRefrescar.addActionListener(e -> cargarTodos());
 
-        acciones.add(txtFiltro);
-        acciones.add(btnFiltrar);
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        acciones.setBackground(Tema.BG_SURFACE);
         acciones.add(btnRefrescar);
 
         p.add(textos,   BorderLayout.WEST);
@@ -90,7 +77,7 @@ public class PanelListar extends JPanel {
         tableModel = new DefaultTableModel(COLUMNAS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
             @Override public Class<?> getColumnClass(int c) {
-                return c == 0 || c == 3 ? Integer.class : String.class;
+                return (c == 0 || c == 3) ? Integer.class : String.class;
             }
         };
 
@@ -104,7 +91,7 @@ public class PanelListar extends JPanel {
         tabla.setShowGrid(true);
         tabla.setIntercellSpacing(new Dimension(1, 1));
         tabla.setRowHeight(30);
-        tabla.setAutoCreateRowSorter(true); // ordenable por columna
+        tabla.setAutoCreateRowSorter(true);
 
         JTableHeader header = tabla.getTableHeader();
         header.setFont(Tema.FONT_NAV);
@@ -112,8 +99,8 @@ public class PanelListar extends JPanel {
         header.setForeground(Tema.TEXT_MUTED);
         header.setReorderingAllowed(false);
 
-        // Anchos de columna
-        int[] widths = {40, 220, 160, 60, 110, 160};
+        // Anchos de columna: #, Título, Desarrollador, Año, Plataformas
+        int[] widths = {40, 240, 180, 60, 180};
         for (int i = 0; i < widths.length; i++)
             tabla.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
 
@@ -122,7 +109,7 @@ public class PanelListar extends JPanel {
             public Component getTableCellRendererComponent(JTable t, Object val,
                                                            boolean sel, boolean focus, int row, int col) {
                 super.getTableCellRendererComponent(t, val, sel, focus, row, col);
-                setForeground(sel ? Tema.TEXT_PRIMARY : Tema.TEXT_PRIMARY);
+                setForeground(Tema.TEXT_PRIMARY);
                 setBackground(sel ? Tema.ACCENT_DIM
                         : (row % 2 == 0 ? Tema.BG_CARD : Tema.BG_PANEL));
                 setBorder(new EmptyBorder(0, 8, 0, 8));
@@ -137,70 +124,38 @@ public class PanelListar extends JPanel {
     }
 
     private JPanel crearFooter() {
-        JPanel p = new JPanel(new BorderLayout());
-        p.setBackground(Tema.BG_SURFACE);
-        p.setBorder(new EmptyBorder(10, 0, 0, 0));
-
-        lblConteo = new JLabel("—");
+        lblConteo = new JLabel("-");
         lblConteo.setFont(Tema.FONT_SMALL);
         lblConteo.setForeground(Tema.TEXT_MUTED);
 
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Tema.BG_SURFACE);
+        p.setBorder(new EmptyBorder(10, 0, 0, 0));
         p.add(lblConteo, BorderLayout.WEST);
         return p;
     }
 
     public void cargarTodos() {
-        
         tableModel.setRowCount(0);
-         txtFiltro.setText("");
-         try {
-         List<Long> offsets = bPlusTree.listarActivos();
-         int n = 0;
-         for (Long offset : offsets) {
-         Videojuego v = archivoManager.leerRegistro(offset);
-         if (v != null && !v.estaEliminado()) {
-         tableModel.addRow(new Object[]{
-         ++n, v.getTitulo().trim(), v.getDesarrollador().trim(),
-         v.getAnio(), v.getGenero().trim(), v.getPlataformas().trim()
-         });
-         }
-         }
-         lblConteo.setText(n + " registro(s) activo(s)");
-         ventana.setStatusOk("Lista actualizada — " + n + " registro(s)");
-         } catch (Exception ex) {
-         ventana.setStatusError("Error al listar: " + ex.getMessage());
-         }
-         
-    }
-
-    private void aplicarFiltro() {
-        
-        String filtro = txtFiltro.getText().trim().toLowerCase();
-         if (filtro.isEmpty()) { cargarTodos(); return; }
-
-         tableModel.setRowCount(0);
-         try {
-         List<Long> offsets = bPlusTree.listarActivos();
-         int n = 0;
-         for (Long offset : offsets) {
-         Videojuego v = archivoManager.leerRegistro(offset);
-         if (v != null && !v.estaEliminado()
-         && v.getTitulo().toLowerCase().contains(filtro)) {
-         tableModel.addRow(new Object[]{
-         ++n, v.getTitulo().trim(), v.getDesarrollador().trim(),
-         v.getAnio(), v.getGenero().trim(), v.getPlataformas().trim()
-         });
-         }
-         }
-         lblConteo.setText(n + " resultado(s) para \"" + txtFiltro.getText().trim() + "\"");
-         } catch (Exception ex) {
-         ventana.setStatusError("Error al filtrar: " + ex.getMessage());
-         }
-         
-    }
-
-    private JButton crearBoton(String texto, Color bg) {
-        if (bg == Tema.ACCENT) return Tema.botonPrimario(texto);
-        return Tema.botonSecundario(texto);
+        try {
+            List<Long> offsets = bPlusTree.listarActivos();
+            int n = 0;
+            for (Long offset : offsets) {
+                Videojuego v = archivoManager.leerRegistro(offset);
+                if (v != null && !v.estaEliminado()) {
+                    tableModel.addRow(new Object[]{
+                            ++n,
+                            v.getTitulo().trim(),
+                            v.getDesarrollador().trim(),
+                            v.getAño(),
+                            v.getPlataformas().trim()
+                    });
+                }
+            }
+            lblConteo.setText(n + " registro(s) activo(s)");
+            ventana.setStatusOk("Lista actualizada - " + n + " registro(s)");
+        } catch (Exception ex) {
+            ventana.setStatusError("Error al listar: " + ex.getMessage());
+        }
     }
 }

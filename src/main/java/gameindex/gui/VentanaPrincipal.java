@@ -22,10 +22,10 @@ public class VentanaPrincipal extends JFrame {
     private NavButton[] navButtons;
 
     private static final String[] PANEL_NAMES  = {
-            "INSERTAR","BUSCAR","RANGO","ACTUALIZAR","ELIMINAR","LISTAR","ARBOL"
+            "INSERTAR","BUSCAR","RANGO","FRANQUICIA","ACTUALIZAR","ELIMINAR","LISTAR","ARBOL"
     };
     private static final String[] PANEL_LABELS = {
-            "Insertar","Buscar","Buscar Rango","Actualizar","Eliminar","Listar Todo","Ver Arbol B+"
+            "Insertar","Buscar","Buscar Rango","Buscar Franquicia", "Actualizar","Eliminar","Listar Todo","Ver Arbol B+"
     };
 
     public VentanaPrincipal() {
@@ -181,6 +181,7 @@ public class VentanaPrincipal extends JFrame {
         contentPanel.add(new PanelInsertar(archivoManager, bPlusTree, this),    "INSERTAR");
         contentPanel.add(new PanelBuscar(archivoManager, bPlusTree, this),      "BUSCAR");
         contentPanel.add(new PanelBuscarRango(archivoManager, bPlusTree, this), "RANGO");
+        contentPanel.add(new PanelBuscarPrefijo(archivoManager, bPlusTree, this), "FRANQUICIA");
         contentPanel.add(new PanelActualizar(archivoManager, bPlusTree, this),  "ACTUALIZAR");
         contentPanel.add(new PanelEliminar(archivoManager, bPlusTree, this),    "ELIMINAR");
         contentPanel.add(new PanelListar(archivoManager, bPlusTree, this),      "LISTAR");
@@ -252,7 +253,6 @@ public class VentanaPrincipal extends JFrame {
     }
 
     public void actualizarConteoRegistros() {
-        /**
         SwingUtilities.invokeLater(() -> {
             try {
                 if (archivoManager != null)
@@ -261,7 +261,6 @@ public class VentanaPrincipal extends JFrame {
                 recordCountLabel.setText("Registros: -");
             }
         });
-         */
     }
 
     public void mostrarError(String msg) {
@@ -273,6 +272,7 @@ public class VentanaPrincipal extends JFrame {
                 "¿Deseas cerrar GameIndex?\nLos datos están guardados en disco.",
                 "Confirmar salida", JOptionPane.YES_NO_OPTION);
         if (r == JOptionPane.YES_OPTION) {
+            try { if (bPlusTree != null) bPlusTree.cerrar(); } catch (Exception ignored) {}
             try { if (archivoManager != null) archivoManager.cerrar(); } catch (Exception ignored) {}
             dispose(); System.exit(0);
         }

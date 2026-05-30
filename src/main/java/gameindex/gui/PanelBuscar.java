@@ -7,7 +7,6 @@ import gameindex.model.Videojuego;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
-import java.awt.event.*;
 
 public class PanelBuscar extends JPanel {
 
@@ -70,7 +69,7 @@ public class PanelBuscar extends JPanel {
 
         txtBusqueda = new JTextField();
         Tema.estilizarTextField(txtBusqueda);
-        txtBusqueda.addActionListener(e -> buscar()); // Enter para buscar
+        txtBusqueda.addActionListener(e -> buscar());
 
         JButton btnBuscar = Tema.botonPrimario("Buscar");
         btnBuscar.setPreferredSize(new Dimension(130, 38));
@@ -90,31 +89,28 @@ public class PanelBuscar extends JPanel {
     }
 
     private void buscar() {
-        
-         String titulo = txtBusqueda.getText().trim();
-         if (titulo.isEmpty()) {
-         mostrarMensaje("Escribe un título para buscar.", Tema.TEXT_MUTED);
-         return;
-         }
-
-         try {
-         Long offset = bPlusTree.buscar(titulo);
-         if (offset == null) {
-         mostrarMensaje("No se encontró ningún videojuego con ese título.", Tema.DANGER);
-         ventana.setStatusError("Sin resultados para: " + titulo);
-         } else {
-         Videojuego v = archivoManager.leerRegistro(offset);
-         if (v == null || v.estaEliminado()) {
-         mostrarMensaje("El videojuego fue eliminado del sistema.", Tema.TEXT_MUTED);
-         } else {
-         mostrarResultado(v);
-         ventana.setStatusOk("Videojuego encontrado: " + titulo);
-         }
-         }
-         } catch (Exception ex) {
-         mostrarMensaje("Error al buscar: " + ex.getMessage(), Tema.DANGER);
-         }
-         
+        String titulo = txtBusqueda.getText().trim();
+        if (titulo.isEmpty()) {
+            mostrarMensaje("Escribe un título para buscar.", Tema.TEXT_MUTED);
+            return;
+        }
+        try {
+            Long offset = bPlusTree.buscar(titulo);
+            if (offset == null) {
+                mostrarMensaje("No se encontró ningún videojuego con ese título.", Tema.DANGER);
+                ventana.setStatusError("Sin resultados para: " + titulo);
+            } else {
+                Videojuego v = archivoManager.leerRegistro(offset);
+                if (v == null || v.estaEliminado()) {
+                    mostrarMensaje("El videojuego fue eliminado del sistema.", Tema.TEXT_MUTED);
+                } else {
+                    mostrarResultado(v);
+                    ventana.setStatusOk("Videojuego encontrado: " + titulo);
+                }
+            }
+        } catch (Exception ex) {
+            mostrarMensaje("Error al buscar: " + ex.getMessage(), Tema.DANGER);
+        }
     }
 
     private void mostrarVacio() {
@@ -147,39 +143,63 @@ public class PanelBuscar extends JPanel {
                 new EmptyBorder(24, 28, 24, 28)
         ));
 
-        GridBagConstraints gc = new GridBagConstraints();
-        gc.anchor = GridBagConstraints.WEST;
-        gc.insets = new Insets(5, 0, 5, 20);
+        GridBagConstraints gcKey = new GridBagConstraints();
+        gcKey.anchor = GridBagConstraints.NORTHWEST;
+        gcKey.fill   = GridBagConstraints.NONE;
+        gcKey.insets = new Insets(8, 0, 8, 24);
+        gcKey.gridx  = 0;
+        gcKey.weightx = 0;
+
+        GridBagConstraints gcVal = new GridBagConstraints();
+        gcVal.anchor = GridBagConstraints.NORTHWEST;
+        gcVal.fill   = GridBagConstraints.HORIZONTAL;
+        gcVal.insets = new Insets(8, 0, 8, 0);
+        gcVal.gridx  = 1;
+        gcVal.weightx = 1;
 
         String[][] campos = {
                 {"Título",        v.getTitulo()},
                 {"Desarrollador", v.getDesarrollador()},
-                {"Año",           String.valueOf(v.getAnio())},
+                {"Año",           String.valueOf(v.getAño())},
                 {"Plataformas",   v.getPlataformas()},
                 {"Género",        v.getGenero()},
                 {"Sinopsis",      v.getSinopsis()},
         };
 
         for (int i = 0; i < campos.length; i++) {
-            gc.gridx = 0; gc.gridy = i; gc.weightx = 0;
+            gcKey.gridy = i;
             JLabel lKey = Tema.hint(campos[i][0]);
             lKey.setFont(Tema.FONT_LABEL);
-            lKey.setPreferredSize(new Dimension(130, 24));
-            card.add(lKey, gc);
+            lKey.setPreferredSize(new Dimension(130, 20));
+            card.add(lKey, gcKey);
 
-            gc.gridx = 1; gc.weightx = 1;
-            JLabel lVal = new JLabel("<html>" + campos[i][1] + "</html>");
-            lVal.setFont(Tema.FONT_BODY);
-            lVal.setForeground(Tema.TEXT_PRIMARY);
-            card.add(lVal, gc);
+            gcVal.gridy = i;
+            card.add(crearValor(campos[i][1]), gcVal);
         }
 
-        // Spacer
-        gc.gridx = 0; gc.gridy = campos.length; gc.weighty = 1;
-        card.add(Box.createVerticalGlue(), gc);
+        GridBagConstraints gcSpacer = new GridBagConstraints();
+        gcSpacer.gridy   = campos.length;
+        gcSpacer.weighty = 1;
+        gcSpacer.gridx   = 0;
+        gcSpacer.gridwidth = 2;
+        card.add(Box.createVerticalGlue(), gcSpacer);
 
         panelResultado.add(card, BorderLayout.NORTH);
         panelResultado.revalidate();
         panelResultado.repaint();
+    }
+
+    private JTextArea crearValor(String texto) {
+        JTextArea ta = new JTextArea(texto);
+        ta.setFont(Tema.FONT_BODY);
+        ta.setForeground(Tema.TEXT_PRIMARY);
+        ta.setBackground(Tema.BG_CARD);
+        ta.setEditable(false);
+        ta.setFocusable(false);
+        ta.setLineWrap(true);
+        ta.setWrapStyleWord(true);
+        ta.setBorder(null);
+        ta.setOpaque(false);
+        return ta;
     }
 }

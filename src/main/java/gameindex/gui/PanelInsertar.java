@@ -109,6 +109,11 @@ public class PanelInsertar extends JPanel {
         scroll.setBorder(null);
         scroll.setBackground(Tema.BG_SURFACE);
         scroll.getViewport().setBackground(Tema.BG_SURFACE);
+
+        // Aumentar velocidad del scroll
+        scroll.getVerticalScrollBar().setUnitIncrement(20);
+        scroll.getHorizontalScrollBar().setUnitIncrement(20);
+
         return scroll;
     }
 
