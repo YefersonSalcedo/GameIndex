@@ -150,7 +150,7 @@ public class PanelListar extends JPanel {
     }
 
     public void cargarTodos() {
-        /**
+        
         tableModel.setRowCount(0);
          txtFiltro.setText("");
          try {
@@ -170,11 +170,11 @@ public class PanelListar extends JPanel {
          } catch (Exception ex) {
          ventana.setStatusError("Error al listar: " + ex.getMessage());
          }
-         */
+         
     }
 
     private void aplicarFiltro() {
-        /**
+        
         String filtro = txtFiltro.getText().trim().toLowerCase();
          if (filtro.isEmpty()) { cargarTodos(); return; }
 
@@ -196,7 +196,7 @@ public class PanelListar extends JPanel {
          } catch (Exception ex) {
          ventana.setStatusError("Error al filtrar: " + ex.getMessage());
          }
-         */
+         
     }
 
     private JButton crearBoton(String texto, Color bg) {

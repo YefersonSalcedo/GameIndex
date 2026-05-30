@@ -160,7 +160,7 @@ public class PanelActualizar extends JPanel {
 
     // ── Lógica ─────────────────────────────────────────────────────────────────
     private void cargarRegistro() {
-        /**
+        
         String titulo = txtBusqueda.getText().trim();
         if (titulo.isEmpty()) return;
         try {
@@ -189,7 +189,7 @@ public class PanelActualizar extends JPanel {
         } catch (Exception ex) {
             ventana.setStatusError("Error al cargar: " + ex.getMessage());
         }
-         */
+         
     }
 
     private void actualizar() {

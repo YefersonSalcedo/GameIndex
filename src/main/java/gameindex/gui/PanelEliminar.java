@@ -142,7 +142,7 @@ public class PanelEliminar extends JPanel {
     }
 
     private void buscarParaEliminar() {
-        /**
+        
          String titulo = txtBusqueda.getText().trim();
          if (titulo.isEmpty()) return;
 
@@ -169,11 +169,11 @@ public class PanelEliminar extends JPanel {
          } catch (Exception ex) {
          ventana.setStatusError("Error al buscar: " + ex.getMessage());
          }
-         */
+         
     }
 
     private void confirmarEliminacion() {
-        /**
+        
          if (tituloEncontrado == null) return;
          try {
          bPlusTree.eliminarLogico(tituloEncontrado);
@@ -183,7 +183,7 @@ public class PanelEliminar extends JPanel {
          } catch (Exception ex) {
          ventana.setStatusError("Error al eliminar: " + ex.getMessage());
          }
-         */
+         
     }
 
     private void cancelar() {

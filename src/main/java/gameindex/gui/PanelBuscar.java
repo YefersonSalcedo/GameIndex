@@ -90,7 +90,7 @@ public class PanelBuscar extends JPanel {
     }
 
     private void buscar() {
-        /**
+        
          String titulo = txtBusqueda.getText().trim();
          if (titulo.isEmpty()) {
          mostrarMensaje("Escribe un título para buscar.", Tema.TEXT_MUTED);
@@ -114,7 +114,7 @@ public class PanelBuscar extends JPanel {
          } catch (Exception ex) {
          mostrarMensaje("Error al buscar: " + ex.getMessage(), Tema.DANGER);
          }
-         */
+         
     }
 
     private void mostrarVacio() {
