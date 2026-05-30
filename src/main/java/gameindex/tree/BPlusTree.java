@@ -72,7 +72,9 @@ public class BPlusTree {
         }
 
         for (int i = 0; i < hoja.getNumClaves(); i++) {
-            if (clave.equals(hoja.getClave(i))) {
+            String claveNodo = hoja.getClave(i).trim();
+            int cmp = claveNodo.compareTo(clave);
+            if (cmp == 0) {
                 long offset = hoja.getOffset(i);
                 Videojuego videojuego = archivoManager.leerRegistro(offset);
                 if (videojuego != null && !videojuego.estaEliminado()) {
@@ -80,6 +82,7 @@ public class BPlusTree {
                 }
                 return null;
             }
+            if (cmp > 0) return null;
         }
 
         return null;
@@ -185,12 +188,10 @@ public class BPlusTree {
                 if (clave.compareTo(hasta) > 0) {
                     return resultados;
                 }
-                if (clave.compareTo(desde) >= 0) {
-                    long offset = actual.getOffset(i);
-                    Videojuego videojuego = archivoManager.leerRegistro(offset);
-                    if (videojuego != null && !videojuego.estaEliminado()) {
-                        resultados.add(offset);
-                    }
+                long offset = actual.getOffset(i);
+                Videojuego videojuego = archivoManager.leerRegistro(offset);
+                if (videojuego != null && !videojuego.estaEliminado()) {
+                    resultados.add(offset);
                 }
             }
 
@@ -337,8 +338,7 @@ public class BPlusTree {
 
         for (int i = 0; i < niveles.size(); i++) {
             System.out.println("Nivel " + i + ":");
-            List<String> nivel = niveles.get(i);
-            for (String nodo : nivel) {
+            for (String nodo : niveles.get(i)) {
                 System.out.println("  " + nodo);
             }
         }
@@ -363,8 +363,16 @@ public class BPlusTree {
      * @param videojuego objeto a persistir e indexar
      */
     public void insertar(Videojuego videojuego) {
+        String claveTrim = videojuego.getTitulo().trim();
+
+        // Verificar duplicado antes de escribir en disco
+        if (buscar(claveTrim) != null) {
+            throw new IllegalArgumentException(
+                    "Ya existe un videojuego con el título: \"" + claveTrim + "\"");
+        }
+
         long offset = archivoManager.agregarRegistro(videojuego);
-        SplitResult resultado = insertarRecursivo(raiz, videojuego.getTitulo().trim(), offset);
+        SplitResult resultado = insertarRecursivo(raiz, claveTrim, offset);
 
         if (resultado != null) {
             NodoBPlus nuevaRaiz = new NodoBPlus(NivelNodo.INTERNO);
@@ -412,8 +420,8 @@ public class BPlusTree {
         NodoBPlus nodoDerecho = new NodoBPlus(NivelNodo.HOJA);
 
         while (nodo.getNumClaves() > mitad) {
-            nodoDerecho.getClaves().add(0, nodo.eliminarClave(mitad));
-            nodoDerecho.getOffsets().add(0, nodo.eliminarOffset(mitad));
+            nodoDerecho.getClaves().add(nodo.eliminarClave(mitad));
+            nodoDerecho.getOffsets().add(nodo.eliminarOffset(mitad));
         }
 
         nodoDerecho.setSiguienteHoja(nodo.getSiguienteHoja());
@@ -429,13 +437,13 @@ public class BPlusTree {
         NodoBPlus nodoDerecho = new NodoBPlus(NivelNodo.INTERNO);
 
         while (nodo.getNumClaves() > mitad) {
-            nodoDerecho.getClaves().add(0, nodo.eliminarClave(mitad));
+            nodoDerecho.getClaves().add(nodo.eliminarClave(mitad));
         }
 
         int numHijosDerecho = nodoDerecho.getNumClaves() + 1;
         int inicioHijos = nodo.getHijos().size() - numHijosDerecho;
         while (nodo.getHijos().size() > inicioHijos) {
-            nodoDerecho.getHijos().add(0, nodo.eliminarHijo(inicioHijos));
+            nodoDerecho.getHijos().add(nodo.eliminarHijo(inicioHijos));
         }
 
         return new SplitResult(clavePromovida, nodoDerecho);
@@ -445,12 +453,21 @@ public class BPlusTree {
 
     /**
      * Actualiza los datos de un videojuego existente en el árbol y en disco.
+     * Si el título no cambia, sobreescribe el registro en su mismo offset.
+     * Si el título cambia, marca el registro viejo como eliminado, elimina su
+     * entrada del índice, escribe el nuevo registro al final del archivo e
+     * inserta la nueva clave en el árbol.
+     *
      * @param tituloOriginal        título con el que está indexado actualmente
      * @param videojuegoActualizado objeto con los nuevos datos
      * @return true si fue encontrado y actualizado; false si no existe
      */
     public boolean actualizar(String tituloOriginal, Videojuego videojuegoActualizado) {
-        /**
+        if (tituloOriginal == null || videojuegoActualizado == null
+                || videojuegoActualizado.getTitulo() == null) {
+            return false;
+        }
+
         long[] offsetWrapper = new long[]{-1L};
         buscarOffsetEnArbol(raiz, tituloOriginal.trim(), offsetWrapper);
         long offsetActual = offsetWrapper[0];
@@ -462,9 +479,18 @@ public class BPlusTree {
 
         String nuevoTitulo = videojuegoActualizado.getTitulo().trim();
 
-        if (tituloOriginal.trim().equalsIgnoreCase(nuevoTitulo)) {
+        if (tituloOriginal.trim().equals(nuevoTitulo)) {
+            // Mismo título: sobreescribir en el mismo offset
             archivoManager.escribirRegistro(videojuegoActualizado, offsetActual);
         } else {
+            // Título cambia: marcar registro viejo como eliminado en disco,
+            Videojuego viejo = archivoManager.leerRegistro(offsetActual);
+            if (viejo != null) {
+                viejo.marcarEliminado();
+                archivoManager.escribirRegistro(viejo, offsetActual);
+            }
+
+            // Eliminar la entrada antigua del índice e insertar la nueva
             eliminarEntradaIndice(raiz, tituloOriginal.trim());
             long nuevoOffset = archivoManager.agregarRegistro(videojuegoActualizado);
             SplitResult resultado = insertarRecursivo(raiz, nuevoTitulo, nuevoOffset);
@@ -477,14 +503,68 @@ public class BPlusTree {
             }
         }
         persistir();
-         */
         return true;
     }
 
-    // === Métodos auxiliares ==================
+    // === Métodos auxiliares ==================================================
+
+    /**
+     * Recorre el árbol recursivamente buscando la clave exacta y, si la
+     * encuentra en una hoja, escribe su offset en offsetWrapper[0].
+     *
+     * @param nodo          nodo actual de la recursión
+     * @param clave         clave a buscar
+     * @param offsetWrapper arreglo de un elemento donde se deposita el offset
+     */
+    private void buscarOffsetEnArbol(NodoBPlus nodo, String clave, long[] offsetWrapper) {
+        if (nodo == null) return;
+
+        if (nodo.esHoja()) {
+            for (int i = 0; i < nodo.getNumClaves(); i++) {
+                if (clave.equals(nodo.getClave(i))) {
+                    offsetWrapper[0] = nodo.getOffset(i);
+                    return;
+                }
+            }
+        } else {
+            int posHijo = nodo.buscarPosicionHijo(clave);
+            buscarOffsetEnArbol(nodo.getHijo(posHijo), clave, offsetWrapper);
+        }
+    }
+
+    /**
+     * Elimina la entrada (clave + offset) de la hoja correspondiente en el
+     * índice. No rebalancea el árbol; solo limpia la referencia del índice.
+     *
+     * @param nodo  raíz desde la que comenzar la búsqueda
+     * @param clave clave a eliminar del índice
+     */
+    private void eliminarEntradaIndice(NodoBPlus nodo, String clave) {
+        NodoBPlus hoja = buscarHoja(nodo, clave);
+        if (hoja == null) return;
+
+        for (int i = 0; i < hoja.getNumClaves(); i++) {
+            if (clave.equals(hoja.getClave(i))) {
+                hoja.eliminarClave(i);
+                hoja.eliminarOffset(i);
+                return;
+            }
+        }
+    }
 
     /** Devuelve la raíz del árbol. */
     public NodoBPlus getRaiz() {
         return raiz;
+    }
+
+    /**
+     * Devuelve la primera hoja del árbol (la más a la izquierda).
+     */
+    public NodoBPlus getPrimeraHoja() {
+        return buscarHojaMasIzquierda();
+    }
+
+    public void cerrar() {
+        indiceManager.cerrar();
     }
 }

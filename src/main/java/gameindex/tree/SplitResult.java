@@ -11,17 +11,17 @@ public class SplitResult {
     private final String clavePromovida;
 
     // Nuevo nodo derecho creado durante la división.
-    private final NodoBPlus nodoDerechо;
+    private final NodoBPlus nodoDerecho;
 
     /**
      * Constructor del resultado de split.
      *
      * @param clavePromovida clave que debe insertarse en el nodo padre
-     * @param nodoDerechо    nuevo nodo derecho resultado de la división
+     * @param nodoDerecho    nuevo nodo derecho resultado de la división
      */
-    public SplitResult(String clavePromovida, NodoBPlus nodoDerechо) {
+    public SplitResult(String clavePromovida, NodoBPlus nodoDerecho) {
         this.clavePromovida = clavePromovida;
-        this.nodoDerechо    = nodoDerechо;
+        this.nodoDerecho    = nodoDerecho;
     }
 
     /** @return la clave que sube al padre */
@@ -31,7 +31,7 @@ public class SplitResult {
 
     /** @return el nuevo nodo derecho creado en la división */
     public NodoBPlus getNodoDerecho() {
-        return nodoDerechо;
+        return nodoDerecho;
     }
 
     @Override
