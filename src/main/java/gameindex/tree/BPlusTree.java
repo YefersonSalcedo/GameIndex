@@ -57,34 +57,25 @@ public class BPlusTree {
      * @return offset del registro, o null si no se encuentra
      */
     public Long buscar(String titulo) {
-        if (titulo == null) {
-            return null;
-        }
+        if (titulo == null) return null;
 
-        String clave = titulo.trim();
-        if (clave.isEmpty() || raiz == null || raiz.getNumClaves() == 0) {
-            return null;
-        }
+        String clave = titulo.trim().toLowerCase(); // normalizar entrada
+        if (clave.isEmpty() || raiz == null || raiz.getNumClaves() == 0) return null;
 
         NodoBPlus hoja = buscarHoja(raiz, clave);
-        if (hoja == null) {
-            return null;
-        }
+        if (hoja == null) return null;
 
         for (int i = 0; i < hoja.getNumClaves(); i++) {
-            String claveNodo = hoja.getClave(i).trim();
+            String claveNodo = hoja.getClave(i).trim().toLowerCase(); // comparar en minúsculas
             int cmp = claveNodo.compareTo(clave);
             if (cmp == 0) {
                 long offset = hoja.getOffset(i);
-                Videojuego videojuego = archivoManager.leerRegistro(offset);
-                if (videojuego != null && !videojuego.estaEliminado()) {
-                    return offset;
-                }
+                Videojuego vj = archivoManager.leerRegistro(offset);
+                if (vj != null && !vj.estaEliminado()) return offset;
                 return null;
             }
             if (cmp > 0) return null;
         }
-
         return null;
     }
 
@@ -158,49 +149,38 @@ public class BPlusTree {
     public List<Long> buscarRango(String inicio, String fin) {
         List<Long> resultados = new java.util.ArrayList<>();
 
-        if (inicio == null || fin == null || raiz == null || raiz.getNumClaves() == 0) {
+        if (inicio == null || fin == null || raiz == null || raiz.getNumClaves() == 0)
             return resultados;
-        }
 
-        String desde = inicio.trim();
-        String hasta = fin.trim();
-        if (desde.isEmpty() || hasta.isEmpty()) {
-            return resultados;
-        }
+        String desde = inicio.trim().toLowerCase();
+        String hasta  = fin.trim().toLowerCase();
+        if (desde.isEmpty() || hasta.isEmpty()) return resultados;
 
         if (desde.compareTo(hasta) > 0) {
-            String temporal = desde;
-            desde = hasta;
-            hasta = temporal;
+            String tmp = desde; desde = hasta; hasta = tmp;
         }
 
         NodoBPlus hoja = buscarHoja(raiz, desde);
-        if (hoja == null) {
-            return resultados;
-        }
+        if (hoja == null) return resultados;
 
         NodoBPlus actual = hoja;
         int posicion = actual.buscarPosicionInsercion(desde);
 
         while (actual != null) {
             for (int i = posicion; i < actual.getNumClaves(); i++) {
-                String clave = actual.getClave(i);
-                if (clave.compareTo(hasta) > 0) {
-                    return resultados;
-                }
+                String clave = actual.getClave(i).toLowerCase(); // comparar en minúsculas
+                if (clave.compareTo(hasta) > 0) return resultados;
                 long offset = actual.getOffset(i);
-                Videojuego videojuego = archivoManager.leerRegistro(offset);
-                if (videojuego != null && !videojuego.estaEliminado()) {
-                    resultados.add(offset);
-                }
+                Videojuego v = archivoManager.leerRegistro(offset);
+                if (v != null && !v.estaEliminado()) resultados.add(offset);
             }
-
             actual = actual.getSiguienteHoja();
             posicion = 0;
         }
 
         return resultados;
     }
+
 
     // === Búsqueda por prefijo ==============================================
 
@@ -214,37 +194,26 @@ public class BPlusTree {
     public List<Long> buscarPrefijo(String prefijo) {
         List<Long> resultados = new java.util.ArrayList<>();
 
-        if (prefijo == null || raiz == null || raiz.getNumClaves() == 0) {
+        if (prefijo == null || raiz == null || raiz.getNumClaves() == 0)
             return resultados;
-        }
 
-        String pref = prefijo.trim();
-        if (pref.isEmpty()) {
-            return resultados;
-        }
+        String pref = prefijo.trim().toLowerCase(); // normalizar a minúsculas
+        if (pref.isEmpty()) return resultados;
 
         NodoBPlus hoja = buscarHoja(raiz, pref);
-        if (hoja == null) {
-            return resultados;
-        }
+        if (hoja == null) return resultados;
 
         NodoBPlus actual = hoja;
         int posicion = actual.buscarPosicionInsercion(pref);
 
         while (actual != null) {
             for (int i = posicion; i < actual.getNumClaves(); i++) {
-                String clave = actual.getClave(i);
-                if (!clave.startsWith(pref)) {
-                    return resultados;
-                }
-
+                String clave = actual.getClave(i).toLowerCase(); // comparar en minúsculas
+                if (!clave.startsWith(pref)) return resultados;
                 long offset = actual.getOffset(i);
-                Videojuego videojuego = archivoManager.leerRegistro(offset);
-                if (videojuego != null && !videojuego.estaEliminado()) {
-                    resultados.add(offset);
-                }
+                Videojuego v = archivoManager.leerRegistro(offset);
+                if (v != null && !v.estaEliminado()) resultados.add(offset);
             }
-
             actual = actual.getSiguienteHoja();
             posicion = 0;
         }
@@ -363,7 +332,7 @@ public class BPlusTree {
      * @param videojuego objeto a persistir e indexar
      */
     public void insertar(Videojuego videojuego) {
-        String claveTrim = videojuego.getTitulo().trim();
+        String claveTrim = videojuego.getTitulo().trim().toLowerCase();
 
         // Verificar duplicado antes de escribir en disco
         if (buscar(claveTrim) != null) {
