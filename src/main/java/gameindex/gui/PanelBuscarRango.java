@@ -189,12 +189,18 @@ public class PanelBuscarRango extends JPanel {
     }
 
     private void buscarPrefijo() {
-        /**
-         String prefijo = txtPrefijo.getText().trim();
-         if (prefijo.isEmpty()) { ventana.setStatusError("Escribe un prefijo para buscar."); return; }
-         try { List<Long> offsets = bPlusTree.buscarPrefijo(prefijo); cargarTabla(offsets); }
-         catch (Exception ex) { ventana.setStatusError("Error en búsqueda por prefijo: " + ex.getMessage()); }
-         */
+        String prefijo = txtPrefijo.getText().trim();
+        if (prefijo.isEmpty()) {
+            ventana.setStatusError("Escribe un prefijo para buscar.");
+            return;
+        }
+
+        try {
+            List<Long> offsets = bPlusTree.buscarPrefijo(prefijo);
+            cargarTabla(offsets);
+        } catch (Exception ex) {
+            ventana.setStatusError("Error en búsqueda por prefijo: " + ex.getMessage());
+        }
     }
 
     private void cargarTabla(List<Long> offsets) throws Exception {
