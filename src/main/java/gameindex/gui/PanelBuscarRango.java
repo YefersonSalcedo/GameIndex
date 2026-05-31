@@ -82,21 +82,44 @@ public class PanelBuscarRango extends JPanel {
         gc.gridx = 0; gc.gridy = 0; gc.gridwidth = 3; gc.weightx = 1;
         card.add(lbl, gc);
 
+        // Hint explicativo
+        gc.gridy = 1;
+        JLabel hint = Tema.hint("Ingresa una letra por campo  (ej: A-C ó C-A muestra todos los títulos de A hasta C)");
+        card.add(hint, gc);
+
         gc.gridwidth = 1;
-        gc.gridx = 0; gc.gridy = 1; gc.weightx = 0.4;
-        txtDesde = new JTextField(); Tema.estilizarTextField(txtDesde);
-        card.add(Tema.hint("Desde"), gc);
-        gc.gridy = 2; card.add(txtDesde, gc);
+        gc.gridx = 0; gc.gridy = 2; gc.weightx = 0.4;
+        card.add(Tema.hint("Desde (ej: A)"), gc);
+        txtDesde = new JTextField();
+        Tema.estilizarTextField(txtDesde);
+        // Limitar a 1 carácter
+        txtDesde.setDocument(new javax.swing.text.PlainDocument() {
+            @Override public void insertString(int offs, String str, javax.swing.text.AttributeSet a)
+                    throws javax.swing.text.BadLocationException {
+                if (str == null) return;
+                if ((getLength() + str.length()) <= 1) super.insertString(offs, str, a);
+            }
+        });
+        gc.gridy = 3; card.add(txtDesde, gc);
 
-        gc.gridx = 1; gc.gridy = 1; gc.weightx = 0;
+        gc.gridx = 1; gc.gridy = 2; gc.weightx = 0;
         card.add(Tema.hint("—"), gc);
+        gc.gridy = 3; card.add(new JLabel(), gc);
 
-        gc.gridx = 2; gc.gridy = 1; gc.weightx = 0.4;
-        txtHasta = new JTextField(); Tema.estilizarTextField(txtHasta);
-        card.add(Tema.hint("Hasta"), gc);
-        gc.gridy = 2; card.add(txtHasta, gc);
+        gc.gridx = 2; gc.gridy = 2; gc.weightx = 0.4;
+        card.add(Tema.hint("Hasta (ej: C)"), gc);
+        txtHasta = new JTextField();
+        Tema.estilizarTextField(txtHasta);
+        txtHasta.setDocument(new javax.swing.text.PlainDocument() {
+            @Override public void insertString(int offs, String str, javax.swing.text.AttributeSet a)
+                    throws javax.swing.text.BadLocationException {
+                if (str == null) return;
+                if ((getLength() + str.length()) <= 1) super.insertString(offs, str, a);
+            }
+        });
+        gc.gridy = 3; card.add(txtHasta, gc);
 
-        gc.gridx = 0; gc.gridy = 3; gc.gridwidth = 3; gc.weightx = 1;
+        gc.gridx = 0; gc.gridy = 4; gc.gridwidth = 3; gc.weightx = 1;
         JButton btn = Tema.botonPrimario("Buscar rango");
         btn.setPreferredSize(new Dimension(0, 34));
         btn.addActionListener(e -> buscarRango());
@@ -142,12 +165,16 @@ public class PanelBuscarRango extends JPanel {
     }
 
     private void buscarRango() {
-        String desde = txtDesde.getText().trim();
-        String hasta = txtHasta.getText().trim();
-        if (desde.isEmpty() || hasta.isEmpty()) {
-            ventana.setStatusError("Completa ambos campos del rango.");
+        String desde = txtDesde.getText().trim().toLowerCase();
+        String hasta  = txtHasta.getText().trim().toLowerCase();
+        if (desde.isEmpty()) {
+            ventana.setStatusError("Ingresa al menos la letra inicial.");
             return;
         }
+        // Si solo ingresaron una letra en "desde" y dejaron "hasta" vacío,
+        // buscar solo esa letra
+        if (hasta.isEmpty()) hasta = desde;
+
         try {
             List<Long> offsets = bPlusTree.buscarRango(desde, hasta);
             cargarTabla(offsets);

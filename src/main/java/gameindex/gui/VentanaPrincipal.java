@@ -195,21 +195,57 @@ public class VentanaPrincipal extends JFrame {
         bar.setBackground(Tema.BG_PANEL);
         bar.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, Tema.BORDER),
-                new EmptyBorder(5, 20, 5, 20)
+                new EmptyBorder(8, 20, 8, 20)  // ← más padding vertical
         ));
-        bar.setPreferredSize(new Dimension(0, 28));
+        bar.setPreferredSize(new Dimension(0, 36));  // ← más alto
 
         statusLabel = new JLabel("Sistema listo");
-        statusLabel.setFont(Tema.FONT_SMALL);
+        statusLabel.setFont(Tema.FONT_NAV);  // ← fuente más grande que FONT_SMALL
         statusLabel.setForeground(Tema.TEXT_MUTED);
 
         recordCountLabel = new JLabel("Registros: -");
-        recordCountLabel.setFont(Tema.FONT_SMALL);
+        recordCountLabel.setFont(Tema.FONT_NAV);  // ← igual
         recordCountLabel.setForeground(Tema.TEXT_MUTED);
 
         bar.add(statusLabel,      BorderLayout.WEST);
         bar.add(recordCountLabel, BorderLayout.EAST);
         return bar;
+    }
+
+    private void mostrarToast(String msg, Color bgColor) {
+        JDialog toast = new JDialog(this, false);
+        toast.setUndecorated(true);
+        toast.setBackground(new Color(0, 0, 0, 0));
+
+        JLabel lbl = new JLabel(msg, SwingConstants.CENTER);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lbl.setForeground(Color.WHITE);
+        lbl.setBorder(new EmptyBorder(14, 32, 14, 32));
+
+        JPanel panel = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(bgColor);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2.dispose();
+            }
+        };
+        panel.setOpaque(false);
+        panel.add(lbl, BorderLayout.CENTER);
+
+        toast.setContentPane(panel);
+        toast.pack();
+
+        // Centrado en la ventana, ligeramente abajo del centro
+        int x = getX() + getWidth()  - toast.getWidth() - 20;
+        int y = getY() + 60;;
+        toast.setLocation(x, y);
+        toast.setVisible(true);
+
+        Timer t = new Timer(3000, e -> toast.dispose());
+        t.setRepeats(false);
+        t.start();
     }
 
     public void navegarA(String panelName) {
@@ -232,6 +268,7 @@ public class VentanaPrincipal extends JFrame {
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText(msg);
             statusLabel.setForeground(Tema.SUCCESS);
+            mostrarToast(msg, new Color(16, 100, 60, 240));
             Timer t = new Timer(4000, e -> {
                 statusLabel.setText("Sistema listo");
                 statusLabel.setForeground(Tema.TEXT_MUTED);
@@ -244,6 +281,7 @@ public class VentanaPrincipal extends JFrame {
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText(msg);
             statusLabel.setForeground(Tema.DANGER);
+            mostrarToast(msg, new Color(140, 20, 40, 240));
             Timer t = new Timer(5000, e -> {
                 statusLabel.setText("Sistema listo");
                 statusLabel.setForeground(Tema.TEXT_MUTED);

@@ -91,7 +91,7 @@ public class PanelBuscar extends JPanel {
     private void buscar() {
         String titulo = txtBusqueda.getText().trim();
         if (titulo.isEmpty()) {
-            mostrarMensaje("Escribe un título para buscar.", Tema.TEXT_MUTED);
+            ventana.setStatusError("Ingresa un título para buscar.");
             return;
         }
         try {

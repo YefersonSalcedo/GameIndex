@@ -15,8 +15,7 @@ public class PanelEliminar extends JPanel {
     private final VentanaPrincipal ventana;
 
     private JTextField txtBusqueda;
-    private JPanel     panelConfirmacion;
-    private JLabel     lblInfo;
+    private JPanel     panelResultado;
 
     private String tituloEncontrado = null;
 
@@ -32,8 +31,8 @@ public class PanelEliminar extends JPanel {
         setBackground(Tema.BG_SURFACE);
         setBorder(new EmptyBorder(32, 40, 32, 40));
 
-        add(crearEncabezado(),  BorderLayout.NORTH);
-        add(crearCuerpo(),      BorderLayout.CENTER);
+        add(crearEncabezado(), BorderLayout.NORTH);
+        add(crearCuerpo(),     BorderLayout.CENTER);
     }
 
     private JPanel crearEncabezado() {
@@ -45,9 +44,7 @@ public class PanelEliminar extends JPanel {
         titulo.setFont(Tema.FONT_TITLE);
         titulo.setForeground(Tema.TEXT_PRIMARY);
 
-        JLabel sub = new JLabel("Eliminación lógica - el registro se marca como eliminado sin borrarse físicamente");
-        sub.setFont(Tema.FONT_BODY);
-        sub.setForeground(Tema.TEXT_MUTED);
+        JLabel sub = Tema.hint("Eliminación lógica — el registro se marca como eliminado sin borrarse físicamente");
 
         JPanel texts = new JPanel();
         texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
@@ -65,70 +62,155 @@ public class PanelEliminar extends JPanel {
         cuerpo.setBackground(Tema.BG_SURFACE);
 
         // Barra de búsqueda
-        JPanel barra = new JPanel(new BorderLayout(12, 0));
-        barra.setBackground(Tema.BG_CARD);
-        barra.setBorder(BorderFactory.createCompoundBorder(
+        JPanel barraPanel = new JPanel(new BorderLayout(12, 0));
+        barraPanel.setBackground(Tema.BG_CARD);
+        barraPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Tema.BORDER),
                 new EmptyBorder(16, 20, 16, 20)
         ));
-        barra.setMaximumSize(new Dimension(Integer.MAX_VALUE, 76));
+        barraPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
 
-        txtBusqueda = crearTextField();
+        txtBusqueda = new JTextField();
+        Tema.estilizarTextField(txtBusqueda);
         txtBusqueda.addActionListener(e -> buscarParaEliminar());
 
-        JButton btnBuscar = crearBoton("Buscar", Tema.ACCENT);
+        JButton btnBuscar = Tema.botonPrimario("Buscar");
+        btnBuscar.setPreferredSize(new Dimension(130, 38));
         btnBuscar.addActionListener(e -> buscarParaEliminar());
 
-        barra.add(new JLabel("Título:  ") {{
-            setFont(Tema.FONT_NAV);
-            setForeground(Tema.TEXT_MUTED);
-        }}, BorderLayout.WEST);
-        barra.add(txtBusqueda, BorderLayout.CENTER);
-        barra.add(btnBuscar,   BorderLayout.EAST);
+        barraPanel.add(txtBusqueda, BorderLayout.CENTER);
+        barraPanel.add(btnBuscar,   BorderLayout.EAST);
 
-        // Panel de confirmación (aparece tras encontrar el registro)
-        panelConfirmacion = crearPanelConfirmacion();
-        panelConfirmacion.setVisible(false);
+        panelResultado = new JPanel(new BorderLayout());
+        panelResultado.setBackground(Tema.BG_SURFACE);
+        panelResultado.setBorder(new EmptyBorder(20, 0, 0, 0));
+        mostrarVacio();
 
-        cuerpo.add(barra);
-        cuerpo.add(Box.createVerticalStrut(20));
-        cuerpo.add(panelConfirmacion);
+        cuerpo.add(barraPanel);
+        cuerpo.add(panelResultado);
         return cuerpo;
     }
 
-    private JPanel crearPanelConfirmacion() {
-        JPanel card = new JPanel(new BorderLayout(0, 20));
+    // ── Lógica ─────────────────────────────────────────────────────────────────
+
+    private void buscarParaEliminar() {
+        String titulo = txtBusqueda.getText().trim();
+        if (titulo.isEmpty()) {
+            ventana.setStatusError("Ingresa un título para eliminar.");
+            return;
+        }
+        try {
+            Long offset = bPlusTree.buscar(titulo);
+            if (offset == null) {
+                mostrarMensaje("No se encontró ningún videojuego con ese título.", Tema.DANGER);
+                ventana.setStatusError("Sin resultados para: " + titulo);
+                return;
+            }
+            Videojuego v = archivoManager.leerRegistro(offset);
+            if (v == null || v.estaEliminado()) {
+                mostrarMensaje("El videojuego ya fue eliminado del sistema.", Tema.TEXT_MUTED);
+                return;
+            }
+            tituloEncontrado = v.getTitulo().trim();
+            mostrarResultado(v);
+            ventana.setStatusOk("Videojuego encontrado: " + tituloEncontrado);
+        } catch (Exception ex) {
+            mostrarMensaje("Error al buscar: " + ex.getMessage(), Tema.DANGER);
+        }
+    }
+
+    private void confirmarEliminacion() {
+        if (tituloEncontrado == null) return;
+        try {
+            bPlusTree.eliminarLogico(tituloEncontrado);
+            ventana.setStatusOk("\"" + tituloEncontrado + "\" eliminado correctamente.");
+            ventana.actualizarConteoRegistros();
+            cancelar();
+        } catch (Exception ex) {
+            ventana.setStatusError("Error al eliminar: " + ex.getMessage());
+        }
+    }
+
+    private void cancelar() {
+        txtBusqueda.setText("");
+        tituloEncontrado = null;
+        mostrarVacio();
+    }
+
+    // ── Renderizado ────────────────────────────────────────────────────────────
+
+    private void mostrarVacio() {
+        panelResultado.removeAll();
+        JLabel lbl = Tema.hint("Ingresa un título para buscar el videojuego a eliminar");
+        lbl.setHorizontalAlignment(SwingConstants.CENTER);
+        panelResultado.add(lbl, BorderLayout.CENTER);
+        panelResultado.revalidate();
+        panelResultado.repaint();
+    }
+
+    private void mostrarMensaje(String msg, Color color) {
+        panelResultado.removeAll();
+        tituloEncontrado = null;
+        JLabel lbl = new JLabel(msg);
+        lbl.setFont(Tema.FONT_BODY);
+        lbl.setForeground(color);
+        lbl.setHorizontalAlignment(SwingConstants.CENTER);
+        panelResultado.add(lbl, BorderLayout.CENTER);
+        panelResultado.revalidate();
+        panelResultado.repaint();
+    }
+
+    private void mostrarResultado(Videojuego v) {
+        panelResultado.removeAll();
+
+        // Card de información — igual que PanelBuscar
+        JPanel card = new JPanel(new GridBagLayout());
         card.setBackground(Tema.BG_CARD);
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 4, 1, 1, Tema.DANGER),
                 new EmptyBorder(24, 28, 24, 28)
         ));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
 
-        // Advertencia
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(Tema.BG_CARD);
+        GridBagConstraints gcKey = new GridBagConstraints();
+        gcKey.anchor  = GridBagConstraints.NORTHWEST;
+        gcKey.fill    = GridBagConstraints.NONE;
+        gcKey.insets  = new Insets(8, 0, 8, 24);
+        gcKey.gridx   = 0;
+        gcKey.weightx = 0;
 
-        JLabel icono = new JLabel("⚠");
-        icono.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
-        icono.setForeground(Tema.DANGER);
-        icono.setBorder(new EmptyBorder(0, 0, 0, 12));
+        GridBagConstraints gcVal = new GridBagConstraints();
+        gcVal.anchor  = GridBagConstraints.NORTHWEST;
+        gcVal.fill    = GridBagConstraints.HORIZONTAL;
+        gcVal.insets  = new Insets(8, 0, 8, 0);
+        gcVal.gridx   = 1;
+        gcVal.weightx = 1;
 
-        lblInfo = new JLabel();
-        lblInfo.setFont(Tema.FONT_BODY);
-        lblInfo.setForeground(Tema.TEXT_PRIMARY);
+        String[][] campos = {
+                {"Título",        v.getTitulo()},
+                {"Desarrollador", v.getDesarrollador()},
+                {"Año",           String.valueOf(v.getAño())},
+                {"Plataformas",   v.getPlataformas()},
+                {"Género",        v.getGenero()},
+                {"Sinopsis",      v.getSinopsis()},
+        };
 
-        top.add(icono,   BorderLayout.WEST);
-        top.add(lblInfo, BorderLayout.CENTER);
+        for (int i = 0; i < campos.length; i++) {
+            gcKey.gridy = i;
+            JLabel lKey = Tema.hint(campos[i][0]);
+            lKey.setFont(Tema.FONT_LABEL);
+            lKey.setPreferredSize(new Dimension(130, 20));
+            card.add(lKey, gcKey);
 
-        // Botones
+            gcVal.gridy = i;
+            card.add(crearValor(campos[i][1]), gcVal);
+        }
+
+        // Botones debajo de la info
         JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         btns.setBackground(Tema.BG_CARD);
 
-        JButton btnCancelar  = crearBoton("Cancelar",           Tema.BG_SURFACE);
-        JButton btnConfirmar = crearBoton("Sí, eliminar",       Tema.DANGER);
-        btnCancelar.setForeground(Tema.TEXT_MUTED);
-        btnConfirmar.setForeground(Color.WHITE);
+        JButton btnCancelar  = Tema.botonSecundario("Cancelar");
+        JButton btnConfirmar = Tema.botonDanger("Sí, eliminar");
 
         btnCancelar.addActionListener(e  -> cancelar());
         btnConfirmar.addActionListener(e -> confirmarEliminacion());
@@ -136,71 +218,30 @@ public class PanelEliminar extends JPanel {
         btns.add(btnCancelar);
         btns.add(btnConfirmar);
 
-        card.add(top,  BorderLayout.CENTER);
-        card.add(btns, BorderLayout.SOUTH);
-        return card;
+        GridBagConstraints gcBtns = new GridBagConstraints();
+        gcBtns.gridy     = campos.length;
+        gcBtns.gridx     = 0;
+        gcBtns.gridwidth = 2;
+        gcBtns.fill      = GridBagConstraints.HORIZONTAL;
+        gcBtns.insets    = new Insets(16, 0, 0, 0);
+        card.add(btns, gcBtns);
+
+        panelResultado.add(card, BorderLayout.NORTH);
+        panelResultado.revalidate();
+        panelResultado.repaint();
     }
 
-    private void buscarParaEliminar() {
-        
-         String titulo = txtBusqueda.getText().trim();
-         if (titulo.isEmpty()) return;
-
-         try {
-         Long offset = bPlusTree.buscar(titulo);
-         if (offset == null) {
-         ventana.setStatusError("No se encontró: " + titulo);
-         panelConfirmacion.setVisible(false);
-         return;
-         }
-         Videojuego v = archivoManager.leerRegistro(offset);
-         if (v == null || v.estaEliminado()) {
-         ventana.setStatusError("El registro ya fue eliminado anteriormente.");
-         panelConfirmacion.setVisible(false);
-         return;
-         }
-
-         tituloEncontrado = v.getTitulo().trim();
-         lblInfo.setText("<html>¿Estás seguro de que deseas eliminar <b>"
-         + tituloEncontrado + "</b>?<br>"
-         + "<span style='color:#8b949e'>Esta acción marcará el registro como eliminado.</span></html>");
-         panelConfirmacion.setVisible(true);
-         ventana.setStatus("Confirma la eliminación de: " + tituloEncontrado);
-         } catch (Exception ex) {
-         ventana.setStatusError("Error al buscar: " + ex.getMessage());
-         }
-         
-    }
-
-    private void confirmarEliminacion() {
-        
-         if (tituloEncontrado == null) return;
-         try {
-         bPlusTree.eliminarLogico(tituloEncontrado);
-         ventana.setStatusOk("\"" + tituloEncontrado + "\" eliminado correctamente.");
-         ventana.actualizarConteoRegistros();
-         cancelar();
-         } catch (Exception ex) {
-         ventana.setStatusError("Error al eliminar: " + ex.getMessage());
-         }
-         
-    }
-
-    private void cancelar() {
-        txtBusqueda.setText("");
-        tituloEncontrado = null;
-        panelConfirmacion.setVisible(false);
-    }
-
-    private JTextField crearTextField() {
-        JTextField f = new JTextField();
-        Tema.estilizarTextField(f);
-        return f;
-    }
-
-    private JButton crearBoton(String texto, Color bg) {
-        if (bg == Tema.ACCENT)   return Tema.botonPrimario(texto);
-        if (bg == Tema.DANGER)   return Tema.botonDanger(texto);
-        return Tema.botonSecundario(texto);
+    private JTextArea crearValor(String texto) {
+        JTextArea ta = new JTextArea(texto);
+        ta.setFont(Tema.FONT_BODY);
+        ta.setForeground(Tema.TEXT_PRIMARY);
+        ta.setBackground(Tema.BG_CARD);
+        ta.setEditable(false);
+        ta.setFocusable(false);
+        ta.setLineWrap(true);
+        ta.setWrapStyleWord(true);
+        ta.setBorder(null);
+        ta.setOpaque(false);
+        return ta;
     }
 }

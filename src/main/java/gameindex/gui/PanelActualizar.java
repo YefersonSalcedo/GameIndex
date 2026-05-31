@@ -169,11 +169,13 @@ public class PanelActualizar extends JPanel {
         return form;
     }
 
-    // ── Lógica ─────────────────────────────────────────────────────────────────
     private void cargarRegistro() {
 
         String titulo = txtBusqueda.getText().trim();
-        if (titulo.isEmpty()) return;
+        if (titulo.isEmpty()) {
+            ventana.setStatusError("Ingresa un título para cargar.");
+            return;
+        }
         try {
             Long offset = bPlusTree.buscar(titulo);
             if (offset == null) {
