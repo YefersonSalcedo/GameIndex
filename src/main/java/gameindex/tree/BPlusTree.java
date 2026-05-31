@@ -354,6 +354,16 @@ public class BPlusTree {
 
     private SplitResult insertarRecursivo(NodoBPlus nodo, String clave, long offset) {
         if (nodo.esHoja()) {
+            // Buscar slot con registro eliminado lógicamente para reutilizarlo
+            for (int i = 0; i < nodo.getNumClaves(); i++) {
+                Videojuego vjSlot = archivoManager.leerRegistro(nodo.getOffset(i));
+                if (vjSlot != null && vjSlot.estaEliminado()) {
+                    nodo.setClave(i, clave);
+                    nodo.setOffset(i, offset);
+                    return null;
+                }
+            }
+
             int pos = nodo.buscarPosicionInsercion(clave);
             nodo.insertarClave(pos, clave);
             nodo.insertarOffset(pos, offset);

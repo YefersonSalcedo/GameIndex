@@ -69,6 +69,11 @@ public class NodoBPlus {
         return claves.get(i);
     }
 
+    /** Reemplaza la clave en la posición indicada (reutilización de slot eliminado). */
+    public void setClave(int i, String clave) {
+        claves.set(i, clave);
+    }
+
     /** Inserta una clave en la posición indicada desplazando las siguientes. */
     public void insertarClave(int i, String clave) {
         claves.add(i, clave);
@@ -109,6 +114,11 @@ public class NodoBPlus {
     /** Obtiene el offset en la posición indicada. */
     public long getOffset(int i) {
         return offsets.get(i);
+    }
+
+    /** Reemplaza el offset en la posición indicada (reutilización de slot eliminado). */
+    public void setOffset(int i, long offset) {
+        offsets.set(i, offset);
     }
 
     /** Inserta un offset en la posición indicada. */
