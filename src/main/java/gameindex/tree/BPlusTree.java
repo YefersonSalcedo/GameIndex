@@ -169,7 +169,7 @@ public class BPlusTree {
         while (actual != null) {
             for (int i = posicion; i < actual.getNumClaves(); i++) {
                 String clave = actual.getClave(i).toLowerCase(); // comparar en minúsculas
-                if (clave.compareTo(hasta) > 0) return resultados;
+                if (!clave.startsWith(hasta) && clave.compareTo(hasta) > 0) return resultados;
                 long offset = actual.getOffset(i);
                 Videojuego v = archivoManager.leerRegistro(offset);
                 if (v != null && !v.estaEliminado()) resultados.add(offset);
