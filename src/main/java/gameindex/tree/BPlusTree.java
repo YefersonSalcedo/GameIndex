@@ -294,8 +294,7 @@ public class BPlusTree {
     }
 
     /**
-     * Imprime por consola el árbol organizado por niveles, útil para depurar
-     * la estructura sin alterar datos ni persistencia.
+     * Imprime por consola el árbol organizado por niveles
      */
     public void imprimirPorNiveles() {
         List<List<String>> niveles = obtenerNiveles();
@@ -437,8 +436,10 @@ public class BPlusTree {
             return false;
         }
 
+        String claveOriginal = tituloOriginal.trim().toLowerCase();
+
         long[] offsetWrapper = new long[]{-1L};
-        buscarOffsetEnArbol(raiz, tituloOriginal.trim(), offsetWrapper);
+        buscarOffsetEnArbol(raiz, claveOriginal, offsetWrapper);
         long offsetActual = offsetWrapper[0];
 
         if (offsetActual == -1L) {
@@ -446,21 +447,20 @@ public class BPlusTree {
             return false;
         }
 
-        String nuevoTitulo = videojuegoActualizado.getTitulo().trim();
+        String nuevoTitulo = videojuegoActualizado.getTitulo().trim().toLowerCase();
 
-        if (tituloOriginal.trim().equals(nuevoTitulo)) {
-            // Mismo título: sobreescribir en el mismo offset
+        if (claveOriginal.equals(nuevoTitulo)) {
+            // Mismo título: sobreescribir en el mismo offset, sin tocar el árbol
             archivoManager.escribirRegistro(videojuegoActualizado, offsetActual);
         } else {
-            // Título cambia: marcar registro viejo como eliminado en disco,
+            // Título cambia: marcar el registro viejo como eliminado
             Videojuego viejo = archivoManager.leerRegistro(offsetActual);
             if (viejo != null) {
                 viejo.marcarEliminado();
                 archivoManager.escribirRegistro(viejo, offsetActual);
             }
 
-            // Eliminar la entrada antigua del índice e insertar la nueva
-            eliminarEntradaIndice(raiz, tituloOriginal.trim());
+            // Insertar nueva clave con nuevo offset - la clave vieja queda tachada
             long nuevoOffset = archivoManager.agregarRegistro(videojuegoActualizado);
             SplitResult resultado = insertarRecursivo(raiz, nuevoTitulo, nuevoOffset);
             if (resultado != null) {
